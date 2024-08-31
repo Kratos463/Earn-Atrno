@@ -62,6 +62,14 @@ const memberSchema = new Schema({
             default: false,
         },
     }],
+    energyLevel: {
+        type: Schema.Types.ObjectId,
+        ref: "EnergyBoost"
+    },
+    tapLevel: {
+        type: Schema.Types.ObjectId,
+        ref: "MultiTapBoost"
+    },
     powerUps: {
         onTap: {
             type: Number,

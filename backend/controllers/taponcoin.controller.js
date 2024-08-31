@@ -42,7 +42,6 @@ const tapCoin = async (req, res) => {
     }
 };
 
-// Periodically synchronize Redis coin counts with MongoDB
 async function syncCoinsToMongo() {
     try {
         // Use sendCommand to get all keys that match the pattern

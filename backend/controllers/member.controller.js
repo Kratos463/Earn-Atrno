@@ -71,13 +71,9 @@ const registerOrLoginMember = async (req, res) => {
     const nextDay = new Date(Date.now());
     nextDay.setHours(0, 0, 0, 0);
 
-    console.log("----> Level", level)
 
     ontap += level.levelNumber
     energy += level.powerUps.energy
-
-    console.log("---> ON tap ", ontap)
-    console.log("---> energy", energy)
 
     // Create and save the new member
     const newMember = new Member({
@@ -97,7 +93,9 @@ const registerOrLoginMember = async (req, res) => {
       powerUps: {
         onTap: ontap,
         energy: energy
-      }
+      },
+      energyLevel: null,
+      tapLevel: null
     });
 
     await newMember.save();
@@ -144,16 +142,17 @@ const checkWallet = async (req, res) => {
   }
 };
 
+// update the currentDay Reward
 const updatecurrentDayRewardClaimed = async (req, res) => {
   try {
     const currentDate = new Date();
-    currentDate.setHours(0, 0, 0, 0); 
+    currentDate.setHours(0, 0, 0, 0);
 
     // Find members where the next reward date matches today, 
     const members = await Member.find({
       nextDayRewardDate: { $lte: new Date() }
     });
-    
+
 
     const updatePromises = members.map(async (member) => {
       if (member.currentDayRewardClaimed) {
@@ -182,10 +181,9 @@ const updatecurrentDayRewardClaimed = async (req, res) => {
 };
 
 
-
 const claimCurrentDayLoginReward = async (req, res) => {
   try {
-    const memberId = req.member._id; 
+    const memberId = req.member._id;
     const member = await Member.findById(memberId);
 
     if (!member) {
@@ -193,7 +191,7 @@ const claimCurrentDayLoginReward = async (req, res) => {
     }
 
     const currentDate = new Date();
-    currentDate.setHours(0, 0, 0, 0); 
+    currentDate.setHours(0, 0, 0, 0);
 
     // Check if the reward has already been claimed for today
     if (member.currentDayRewardClaimed) {
@@ -214,17 +212,17 @@ const claimCurrentDayLoginReward = async (req, res) => {
 
     // Retrieve the reward for the current streak day
     const dailyLoginReward = await DailyLoginReward.findOne({ day: member.dailyLoginStreak });
-    
+
     if (!dailyLoginReward) {
       return res.status(404).json({ message: "Daily login reward not found." });
     }
 
     // Add reward value to the member's wallet
     if (!member.wallet) {
-      member.wallet = { coin: 0 }; // Initialize wallet if it doesn't exist
+      member.wallet = { coins: 0 }; 
     }
-    
-    member.wallet.coin += dailyLoginReward.rewardValue; // Award the coins based on streak day
+
+    member.wallet.coins += dailyLoginReward.rewardValue; 
 
     // Set the next reward date to tomorrow at 12:00 AM
     const nextRewardDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
