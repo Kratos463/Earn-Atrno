@@ -1,9 +1,13 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import TopLeftIcons from './topLeftIcons';
+import { useAppDispatch, useAppSelector } from "@/redux/store";
+import {fetchCurrentMember} from '@/redux/authSlice'
 
 const TapOnCoinCounter: React.FC = () => {
+    const dispatch = useAppDispatch()
+    const {member} = useAppSelector((state)=> state.auth)
     const [count, setCount] = useState<number>(2);
     const [energy, setEnergy] = useState<number>(800); // Initial energy value
 
@@ -13,8 +17,14 @@ const TapOnCoinCounter: React.FC = () => {
         }
     };
 
+    useEffect(()=> {
+        dispatch(fetchCurrentMember())
+    }, [dispatch])
+
+    console.log("Member details from component", member)
+
     return (
-        <div className="flex flex-col items-center justify-center h-screen p-4 relative bg-dark">
+        <div className="pb-20 flex flex-col items-center justify-center h-screen p-4 relative bg-dark">
             {/* Top Left Icons */}
             <TopLeftIcons />
 
@@ -53,7 +63,7 @@ const TapOnCoinCounter: React.FC = () => {
                     alt="Energy"
                     className="w-6 h-6 md:w-8 md:h-8 lg:w-10 lg:h-10"
                 />
-                <span className="text-xs md:text-sm lg:text-sm text-white font-medium">{energy}/3000</span>
+                <span className="text-xs md:text-sm lg:text-sm text-white font-medium">{energy}/{member?.powerUps?.energy}</span>
                 <div className="w-full bg-gray-500 rounded-full h-1.5 mt-1">
                     <div
                         className="bg-yellow-400 h-1.5 rounded-full"

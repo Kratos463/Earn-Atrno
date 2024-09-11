@@ -1,58 +1,90 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faDollarSign, faCopy, faCheckCircle } from '@fortawesome/free-solid-svg-icons';
+import { faDollarSign, faCopy, faCheckCircle, faSync } from '@fortawesome/free-solid-svg-icons';
+import { useAppDispatch, useAppSelector } from "@/redux/store";
+import { fetchFriendList } from '@/redux/authSlice';
+import character from '../../../public/assets/Images/character.png';
+import { formatNumber } from '@/helper/convertNumber';
 
-const friends = [
-    {
-        id: 1,
-        name: 'John Doe',
-        image: '/assets/Images/character.png',
-        level: 'Silver',
-        totalCoins: 1500,
-        earnedAmount: 50,
-    },
-    {
-        id: 2,
-        name: 'Jane Smith',
-        image: '/assets/Images/character.png',
-        level: 'Gold',
-        totalCoins: 2500,
-        earnedAmount: 100,
-    },
-    {
-        id: 3,
-        name: 'Bob Johnson',
-        image: '/assets/Images/character.png',
-        level: 'Diamond',
-        totalCoins: 4000,
-        earnedAmount: 200,
-    },
-    // Add more friends here
-];
+export const SkeletonLoader: React.FC = () => (
+    <div className="mb-4 flex items-center justify-between p-2 bg-secondary/20 text-white rounded-lg animate-pulse">
+        <div className="flex items-center text-left">
+            <div className="w-10 h-10 rounded-full mr-4 bg-primary/20 p-1 bg-gray-700"></div>
+            <div className="flex-grow">
+                <div className="h-4 bg-gray-700 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-gray-700 rounded w-1/2"></div>
+            </div>
+        </div>
+        <div className="h-4 bg-gray-700 rounded w-12"></div>
+    </div>
+);
 
-const referralCode = 'ABCD1234';
-
-const InviteFriends: React.FC = () => {
+const InviteFriends: React.FC = React.memo(() => {
+    const dispatch = useAppDispatch();
+    const { friendList, friendListLoading, member } = useAppSelector((state) => state.auth);
+    const referralCode = member.referralCode;
     const [copied, setCopied] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const [countdown, setCountdown] = useState(0);
 
+    const initialFetchDone = useRef(false);
+
+    // Copy referral code to clipboard
     const handleCopyCode = () => {
-        navigator.clipboard.writeText(referralCode);
+        navigator.clipboard.writeText(`http://localhost:3000/signin/auth?startapp=${referralCode}`);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
 
+    // Fetch friend list
+    const fetchFriends = useCallback(() => {
+        dispatch(fetchFriendList());
+        setRefreshing(true);
+        setCountdown(60);
+    }, [dispatch]);
+
+    // Effect to handle countdown timer
+    useEffect(() => {
+        if (countdown > 0) {
+            const timer = setInterval(() => {
+                setCountdown(prev => prev - 1);
+            }, 1000);
+            return () => clearInterval(timer);
+        } else {
+            setRefreshing(false);
+        }
+    }, [countdown]);
+
+    // Fetch friends on initial render
+    useEffect(() => {
+        if (!initialFetchDone.current) {
+            fetchFriends();
+            initialFetchDone.current = true;
+        }
+    }, [fetchFriends]);
+
+    // Handle refresh icon click
+    const handleRefreshClick = () => {
+        if (!refreshing) {
+            setRefreshing(true)
+            fetchFriends();
+            setRefreshing(false)
+        }
+    };
+
+    // Skeleton Loader Component
+ 
+
     return (
-        <div className="pb-16 p-4 text-white mx-auto max-w-[600px]">
+        <div className="pb-20 p-4 text-white mx-auto max-w-[600px]">
             <img
                 src="/assets/Images/users_group.png"
                 alt="User"
                 className="mx-auto mb-4 w-20 h-20 shadow-2xl"
             />
-
-            {/* Heading */}
-            <h1 className="text-2xl font-bold text-center mb-2">Invite Friends!</h1>
+            <h1 className="text-2xl font-bold text-center">Invite Friends!</h1>
 
             {/* Description */}
             <p className="text-center text-gray-300 mb-6 text-xs">
@@ -70,7 +102,6 @@ const InviteFriends: React.FC = () => {
                     <div className="text-left">
                         <h3 className="text-sm font-medium">Invite a friend</h3>
                         <div className="flex items-center text-xs text-yellow-300 font-bold">
-                            <FontAwesomeIcon icon={faDollarSign} className="mr-1" />
                             +5000 <span className="text-white font-normal ml-1">for you and your friend</span>
                         </div>
                     </div>
@@ -95,7 +126,7 @@ const InviteFriends: React.FC = () => {
                         <span className="text-lg text-yellow-300 font-bold font-mono">{referralCode}</span>
                         <button
                             onClick={handleCopyCode}
-                            className="ml-2 p-1 bg-secondary rounded hover:bg-secondary/50 transition "
+                            className="ml-2 p-1 bg-secondary rounded hover:bg-secondary/50 transition"
                         >
                             <FontAwesomeIcon icon={copied ? faCheckCircle : faCopy} />
                         </button>
@@ -105,33 +136,60 @@ const InviteFriends: React.FC = () => {
 
             {/* Friends List */}
             <div>
-                <h2 className="text-lg font-semibold mb-2 text-left text-white sm:text-base md:text-lg">Your Friends</h2>
+                <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-lg font-semibold mb-2 text-left text-white sm:text-base md:text-lg">
+                        Your Friend List ({friendList ? friendList.length : "0"})
+                    </h2>
+                    <button
+                        onClick={handleRefreshClick}
+                        className={`p-2 ml-4 ${refreshing ? 'animate-spin' : ''}`}
+                        disabled={refreshing}
+                    >
+                        <FontAwesomeIcon
+                            icon={faSync}
+                            className="text-yellow-300"
+                        />
+                    </button>
+                </div>
                 <ul>
-                    {friends.map((friend) => (
-                        <li key={friend.id} className="mb-4 flex items-center justify-between p-2 bg-secondary/20 text-white rounded-lg hover:bg-secondary/30 transition">
-                            <div className="flex items-center text-left">
-                                <img
-                                    src={friend.image}
-                                    alt={friend.name}
-                                    className="w-10 h-10 rounded-full mr-4 bg-primary/20 p-1"
-                                />
-                                <div className="flex-grow">
-                                    <h3 className="text-sm font-semibold">{friend.name}</h3>
-                                    <div className="text-xs text-gray-300">
-                                        {friend.level} • <span className='text-yellow-300'>({friend.totalCoins}K)</span>
+                    {
+                        friendListLoading ? (
+                            <>
+                                <SkeletonLoader />
+                                <SkeletonLoader />
+                                <SkeletonLoader />
+                            </>
+                        ) : friendList && friendList.length > 0 ? (
+                            friendList.map((friend) => (
+                                <li key={friend._id} className="mb-4 flex items-center justify-between p-2 bg-secondary/20 text-white rounded-lg hover:bg-secondary/30 transition">
+                                    <div className="flex items-center text-left">
+                                        <img
+                                            src={character.src}
+                                            alt={friend.friendsDetails.referralCode}
+                                            className="w-10 h-10 rounded-full mr-4 bg-primary/20 p-1"
+                                        />
+                                        <div className="flex-grow">
+                                            <h3 className="text-sm font-semibold">{friend.friendsDetails.referralCode}</h3>
+                                            <div className="text-xs text-gray-300">
+                                                {friend.levelDetails.name}
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
+                                    <div>
+                                        <span className="text-md font-bold text-yellow-300">{formatNumber(friend.reward)}</span>
+                                    </div>
+                                </li>
+                            ))
+                        ) : (
+                            <div className="text-center text-gray-300 mt-4">
+                                You haven’t invited any friends yet. Start sharing your referral code to earn rewards together!
                             </div>
-                            <div>
-                                <FontAwesomeIcon icon={faDollarSign} className="text-yellow-300 mr-1" />
-                                <span className="text-md font-bold text-yellow-300">{friend.earnedAmount}K</span>
-                            </div>
-                        </li>
-                    ))}
+                        )
+                    }
                 </ul>
             </div>
         </div>
     );
-};
+});
 
 export default InviteFriends;

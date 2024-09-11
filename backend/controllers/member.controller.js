@@ -3,12 +3,50 @@ const Level = require("../models/level.model");
 const Member = require("../models/member.model");
 const jwt = require("jsonwebtoken");
 const { createLevel } = require("./level.controller");
+const redisClient = require("../utils/redisConnect");
+const Referral = require("../models/referral.model");
 
-// login or register the user on the basic of wallet address
+
+// Function to generate a unique referral code
+const generateUniqueReferralCode = async () => {
+  let referralCode;
+  let existingReferralCode;
+  do {
+    referralCode = Math.floor(10000000 + Math.random() * 90000000).toString();
+    existingReferralCode = await Member.findOne({ referralCode }).lean().exec();
+  } while (existingReferralCode);
+  return referralCode;
+};
+
+// Function to handle referral reward
+const handleReferralReward = async (rbcode, newMember) => {
+  if (!rbcode) return;
+
+  const referredByUser = await Member.findOne({ referralCode: rbcode }).exec();
+  if (!referredByUser) {
+    throw new Error("Referral code incorrect");
+  }
+
+  referredByUser.wallet.coins += 5000;
+  await referredByUser.save();
+
+  // Create and save referral record
+  const newReferral = new Referral({
+    referrer: referredByUser._id,
+    referee: newMember._id,
+    reward: 5000,
+    rewardClaimed: true,
+    status: "completed"
+  });
+
+  await newReferral.save();
+};
+
+// Function to register or login member
 const registerOrLoginMember = async (req, res) => {
   const { walletAddress, country, rbcode } = req.body;
 
-  // Basic validations
+  // Basic validation
   if (!walletAddress) {
     return res.status(400).json({ message: "Please provide a valid wallet address.", success: false });
   }
@@ -24,75 +62,52 @@ const registerOrLoginMember = async (req, res) => {
         { expiresIn: '30d' }
       );
 
-      res.cookie("authToken", token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: "Strict" });
+      res.cookie("token", token, { 
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production', 
+        sameSite: "Lax", 
+        maxAge: 30 * 24 * 60 * 60 * 1000 
+      });
 
-      return res.status(200).json({ message: "Member logged in successfully.", success: true, token: token });
+      return res.status(200).json({ message: "Member logged in successfully.", success: true, token });
     }
 
-    // If member does not exist, register a new member
-
-    // Generate a unique referral code
-    const generateUniqueReferralCode = async () => {
-      let referralCode;
-      let existingReferralCode;
-      do {
-        referralCode = Math.floor(10000000 + Math.random() * 90000000).toString();
-        existingReferralCode = await Member.findOne({ referralCode }).lean().exec();
-      } while (existingReferralCode);
-      return referralCode;
-    };
-
+    // Register a new member
     const referralCode = await generateUniqueReferralCode();
+    const initialCoin = 5000;
 
-    var coin = 10;
-    let ontap = 0
-    let energy = 0
+    // Find the appropriate level based on initial coins
+    const level = await Level.findOne({
+      minimumPoints: { $lte: initialCoin },
+      maximumPoints: { $gte: initialCoin }
+    }).exec();
 
-    if (rbcode) {
-      const referredByUser = await Member.findOne({ referralCode: rbcode });
-
-      if (!referredByUser) {
-        return res.status(400).json({ message: "Referral code incorrect", success: false });
-      }
-
-      coin += 5000;
-      referredByUser.wallet.coins += 5000;
-      await referredByUser.save();
+    if (!level) {
+      return res.status(400).json({ message: "No suitable level found.", success: false });
     }
 
-
-    const level = await Level.findOne({
-      $and: [
-        { minimumPoints: { $lte: coin } },
-        { maximumPoints: { $gte: coin } }
-      ]
-    });
-
-    const nextDay = new Date(Date.now());
+    const nextDay = new Date();
     nextDay.setHours(0, 0, 0, 0);
 
-
-    ontap += level.levelNumber
-    energy += level.powerUps.energy
-
-    // Create and save the new member
     const newMember = new Member({
       userId: walletAddress,
       referralCode,
-      referredBy: rbcode ? (await Member.findOne({ referralCode: rbcode }))._id : null,
+      referredBy: rbcode ? (await Member.findOne({ referralCode: rbcode }).exec())._id : null,
       country: country.trim(),
-      level: level._id,
+      currentLevel: {
+        levelId: level._id,
+        levelNumber: level.levelNumber
+      },
+      levelCleared: [],
       dailyLoginStreak: 0,
-      lastLoginDate: new Date(Date.now()),
+      lastLoginDate: new Date(),
       currentDayRewardClaimed: false,
       nextDayRewardDate: nextDay,
-      wallet: {
-        coins: coin
-      },
+      wallet: { coins: initialCoin },
       accountStatus: "Active",
       powerUps: {
-        onTap: ontap,
-        energy: energy
+        onTap: level.levelNumber,
+        energy: level.powerUps.energy
       },
       energyLevel: null,
       tapLevel: null
@@ -100,23 +115,35 @@ const registerOrLoginMember = async (req, res) => {
 
     await newMember.save();
 
-    // Generate a JWT token for new registration
+    // Handle referral reward if applicable
+    if (rbcode) {
+      await handleReferralReward(rbcode, newMember);
+    }
+
     const token = jwt.sign(
       { id: newMember._id, userId: newMember.userId },
       process.env.TOKEN_SECRET,
       { expiresIn: '30d' }
     );
 
-    // Set cookie for authentication
-    res.cookie("authToken", token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: "Strict" });
+    res.cookie("token", token, { 
+      httpOnly: true, 
+      secure: process.env.NODE_ENV === 'production', 
+      sameSite: "Lax", 
+      maxAge: 30 * 24 * 60 * 60 * 1000 
+    });
 
-    return res.status(201).json({ message: "Member registered and logged in successfully.", success: true, token: token });
+    return res.status(201).json({ message: "Member registered and logged in successfully.", success: true, token });
 
   } catch (error) {
-    console.error("Error in registration or login process:", error);
+    console.error("Error in registration or login process:", error.message);
     return res.status(500).json({ message: "Internal server error.", success: false });
   }
 };
+
+module.exports = registerOrLoginMember;
+
+
 
 // check memeber with walletAddress is already registered or not
 const checkWallet = async (req, res) => {
@@ -141,6 +168,102 @@ const checkWallet = async (req, res) => {
     return res.status(500).json({ message: "Internal server error.", success: false });
   }
 };
+
+
+// get current member details 
+const fetchMember = async (req, res) => {
+  try {
+    const memberId = req.member._id;
+
+    // Check if the member data is cached in Redis
+    const cachedMember = await redisClient.get(`member:${memberId}`);
+
+    if (cachedMember) {
+      const memberObject = JSON.parse(cachedMember);
+      return res.status(200).json({
+        message: "Current User fetched successfully from cached memory",
+        success: true,
+        member: [memberObject]
+      });
+    }
+
+  
+    const member = await Member.aggregate([
+      { $match: { _id: memberId } },
+      {
+        $lookup: {
+          from: "levels",
+          localField: "currentLevel.levelId",
+          foreignField: "_id",
+          as: "curretLevelDetails"
+        }
+      },
+      {
+        $unwind: '$curretLevelDetails'
+      },
+      {
+        $lookup: {
+          from: 'energyboosts',
+          localField: 'energyLevel',
+          foreignField: '_id',
+          as: 'energyLevelDetails'
+        }
+      },
+      {
+        $unwind: { path: '$energyLevelDetails', preserveNullAndEmptyArrays: true }
+      },
+      {
+        $lookup: {
+          from: 'multitapboosts',
+          localField: 'tapLevel',
+          foreignField: '_id',
+          as: 'tapLevelDetails'
+        }
+      },
+      {
+        $unwind: { path: '$tapLevelDetails', preserveNullAndEmptyArrays: true }
+      },
+      {
+        $project: {
+          _id: 1,
+          userId: 1,
+          referralCode: 1,
+          dailyLoginStreak: 1,
+          lastLoginDate: 1,
+          currentDayRewardClaimed: 1,
+          nextDayRewardDate: 1,
+          accountStatus: 1,
+          dailyTaskProgress: 1,
+          curretLevelDetails: 1,
+          energyLevelDetails: 1,
+          tapLevelDetails: 1,
+          "wallet.coins": 1,
+          "powerUps.onTap": 1,
+          "powerUps.energy": 1,
+          "powerUps.tapEnergy": 1,
+        }
+      }
+    ]).exec();
+
+    if (!member || member.length === 0) {
+      return res.status(400).json({ message: "Member not found", success: false });
+    }
+    const memberObject = member[0];
+    await redisClient.setEx(`member:${memberId}`, 600, JSON.stringify(memberObject));
+
+    return res.status(200).json({
+      message: "Current User fetched successfully",
+      success: true,
+      member
+    });
+
+  } catch (error) {
+    console.error("Error while fetching the current member details:", error);
+    return res.status(500).json({ message: "Internal server error", success: false });
+  }
+}
+
+
 
 // update the currentDay Reward
 const updatecurrentDayRewardClaimed = async (req, res) => {
@@ -219,10 +342,10 @@ const claimCurrentDayLoginReward = async (req, res) => {
 
     // Add reward value to the member's wallet
     if (!member.wallet) {
-      member.wallet = { coins: 0 }; 
+      member.wallet = { coins: 0 };
     }
 
-    member.wallet.coins += dailyLoginReward.rewardValue; 
+    member.wallet.coins += dailyLoginReward.rewardValue;
 
     // Set the next reward date to tomorrow at 12:00 AM
     const nextRewardDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -242,6 +365,59 @@ const claimCurrentDayLoginReward = async (req, res) => {
   }
 };
 
+const fetchFriendList = async (req, res) => {
+  try {
+    const memberId = req.member._id;
+    const friendList = await Referral.aggregate([
+      { $match: { referrer: memberId } },
+      {
+        $lookup: {
+          from: "members",
+          localField: "referee",
+          foreignField: "_id",
+          as: "friendsDetails"
+        }
+      },
+      {
+        $unwind: '$friendsDetails'
+      },
+      {
+        $lookup: {
+          from: "levels",
+          localField: "friendsDetails.level",
+          foreignField: "_id",
+          as: "levelDetails"
+        }
+      },
+      {
+        $unwind: {
+          path: '$levelDetails',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $project: {
+          reward: 1,
+          _id: 1,
+          "friendsDetails.referralCode": 1,
+          "levelDetails.name": 1,
+        }
+      }
+    ]);
+
+    return res.status(200).json({ message: "Friend list fetched successfully", success: true, friendList });
+  } catch (error) {
+    console.log("Error while fetching the friend list", error);
+    return res.status(500).json({ message: "Internal server error", success: false });
+  }
+};
 
 
-module.exports = { registerOrLoginMember, checkWallet, updatecurrentDayRewardClaimed, claimCurrentDayLoginReward };
+module.exports = {
+  registerOrLoginMember,
+  checkWallet,
+  updatecurrentDayRewardClaimed,
+  claimCurrentDayLoginReward,
+  fetchMember,
+  fetchFriendList
+};

@@ -7,30 +7,40 @@ import { useAppDispatch, useAppSelector } from "../../../redux/store";
 import { checkWallet, registerOrLoginMember } from "../../../redux/authSlice";
 import { setCookie } from '../../../helper/setCookie';
 
-const Home: React.FC = () => {
+const Signin: React.FC = () => {
   const dispatch = useAppDispatch();
   const { connect, connectors } = useConnect();
   const { address, isConnected } = useAccount();
   const [country, setCountry] = useState<string>("");
   const [referralCode, setReferralCode] = useState<string>("");
   const router = useRouter();
-  
+
   // Accessing state from Redux store
   const { isRegistered, registerLoading, checkWalletLoading, error, user } = useAppSelector((state) => state.auth);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const referralCodeFromUrl = urlParams.get("referralCode");
+    const referralCodeFromUrl = urlParams.get("startapp");
     if (referralCodeFromUrl) {
       setReferralCode(referralCodeFromUrl);
     }
   }, []);
 
   useEffect(() => {
-    if (isConnected && address) {
-      checkWalletRegistration();
-    }
+    const handleWalletRegistration = async () => {
+      if (isConnected && address) {
+        await checkWalletRegistration();
+
+        if (isRegistered) {
+
+          await dispatch(registerOrLoginMember({ walletAddress: address! }));
+        }
+      }
+    };
+
+    handleWalletRegistration();
   }, [isConnected, address]);
+
 
   const checkWalletRegistration = async () => {
     if (!address) return;
@@ -65,8 +75,9 @@ const Home: React.FC = () => {
   // Redirect if user is successfully registered or logged in
   useEffect(() => {
     if (user && user.success) {
-      setCookie("authToken", user.token, 30);
-      router.push("/game");
+      console.log("User token", user.token)
+      setCookie("token", user.token, 30);
+      router.push("/game/home");
     }
   }, [user, router]);
 
@@ -101,7 +112,7 @@ const Home: React.FC = () => {
               disabled={isLoading}
             />
             <button
-              className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-full transition duration-300 w-full sm:w-auto"
+              className="bg-primary text-white font-bold py-2 px-6 rounded-full transition duration-300 w-full sm:w-auto"
               onClick={handleRegister}
               disabled={isLoading}
             >
@@ -136,4 +147,4 @@ const Home: React.FC = () => {
   );
 };
 
-export default Home;
+export default Signin;

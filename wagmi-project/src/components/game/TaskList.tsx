@@ -30,7 +30,7 @@ const tasks = [
 
 const TaskList: React.FC = () => {
     return (
-        <div className="pb-16 p-4 text-white mx-auto max-w-[600px]">
+        <div className="pb-20 p-4 text-white mx-auto max-w-[600px]">
             <img src="/assets/Images/dollar.png" alt="Bitcoin" className="mx-auto mb-4 w-20 h-20 shadow-2xl" />
 
             <h1 className="text-2xl font-bold text-center mb-2">

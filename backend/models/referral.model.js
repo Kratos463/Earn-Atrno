@@ -5,16 +5,13 @@ const referralSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: "Member", 
     required: true,
+    index: true
   },
   referee: {
     type: Schema.Types.ObjectId,
     ref: "Member", 
     required: true,
-  },
-  referralCode: {
-    type: String,
-    required: true,
-    unique: true,
+    index: true
   },
   reward: {
     type: Number,
@@ -26,7 +23,7 @@ const referralSchema = new Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'completed', 'rewarded'],
+    enum: ['pending', 'completed',],
     default: 'pending',
   },
 }, { timestamps: true });

@@ -163,23 +163,37 @@ const updateLevel = async (req, res) => {
     }
 };
 
-
 const getSingleLevel = async (req, res) => {
     try {
-        const { id } = req.query;
+        const { currentMember } = req.query;
+        const { lvl } = req.query;
+        const page = parseInt(req.query.page) || 1; 
+        const pageSize = parseInt(req.query.pageSize) || 10; 
 
-        if (!id) {
-            return res.status(400).json({ message: "Level ID is required.", success: false });
+        if (!lvl) {
+            return res.status(400).json({ message: "Level number is required.", success: false });
         }
 
         const level = await Level.aggregate([
-            { $match: { _id: new mongoose.Types.ObjectId(id) } },
+            { $match: { levelNumber: parseInt(lvl) } },
             {
                 $lookup: {
                     from: 'members',
                     localField: '_id',
-                    foreignField: 'level',
+                    foreignField: 'currentLevel.levelId',
                     as: 'membersAtThisLevel'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'members',
+                    let: { levelId: '$_id' },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ['$currentLevel.levelId', '$$levelId'] } } },
+                        { $project: { referralCode: 1, _id: 0 } },
+                        { $limit: 50 }
+                    ],
+                    as: 'paginatedAchievers'
                 }
             },
             {
@@ -187,14 +201,55 @@ const getSingleLevel = async (req, res) => {
                     memberCount: { $size: "$membersAtThisLevel" }
                 }
             },
-            { $project: { membersAtThisLevel: 0 } }
+            {
+                $addFields: {
+                    paginatedAchievers: {
+                        $slice: [
+                            "$paginatedAchievers",
+                            (page - 1) * pageSize, 
+                            pageSize 
+                        ]
+                    }
+                }
+            },
+            {
+                $addFields: {
+                    currentMemberPosition: {
+                        $indexOfArray: [
+                            "$paginatedAchievers",
+                            {
+                                $arrayElemAt: [
+                                    "$paginatedAchievers",
+                                    {
+                                        $indexOfArray: [
+                                            "$paginatedAchievers",
+                                            { referralCode: currentMember }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            },
+            { $project: { membersAtThisLevel: 0, achievers: 0 } }
         ]);
 
         if (!level || level.length === 0) {
             return res.status(404).json({ message: "Level not found.", success: false });
         }
 
-        return res.status(200).json({ message: "Level retrieved successfully.", success: true, level: level[0] });
+        const paginatedLevel = level[0];
+        const currentMemberPosition = paginatedLevel.currentMemberPosition !== -1 ? paginatedLevel.currentMemberPosition + 1 : null;
+
+        return res.status(200).json({
+            message: "Level retrieved successfully.",
+            success: true,
+            level: {
+                ...paginatedLevel,
+                currentMemberPosition
+            }
+        });
 
     } catch (error) {
         console.error("Error getting single level:", error);
@@ -202,12 +257,16 @@ const getSingleLevel = async (req, res) => {
     }
 };
 
+
+
+
+
 const getAllLevels = async (req, res) => {
     try {
         const levels = await Level.aggregate([
             {
                 $lookup: {
-                    from: 'members', // The name of the Member collection
+                    from: 'members', 
                     localField: '_id',
                     foreignField: 'level',
                     as: 'membersAtThisLevel'
@@ -218,8 +277,8 @@ const getAllLevels = async (req, res) => {
                     memberCount: { $size: "$membersAtThisLevel" }
                 }
             },
-            { $project: { membersAtThisLevel: 0 } }, // Exclude members array if not needed
-            { $sort: { levelNumber: 1 } } // Optional: Sort by level number
+            { $project: { membersAtThisLevel: 0 } },
+            { $sort: { levelNumber: 1 } }
         ]);
 
         if (!levels || levels.length === 0) {

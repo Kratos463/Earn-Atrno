@@ -12,7 +12,7 @@ export default function DefaultLayout({
     <>
       <div>
           <main>
-            <div className="bg-dark">
+            <div className="bg-dark h-screen overflow-scroll">
               {children}
             </div>
           </main>

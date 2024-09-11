@@ -2,9 +2,13 @@
 
 import React from 'react';
 import Link from 'next/link';
+import {useAppSelector} from '@/redux/store'
 
 
 const TopLeftIcons: React.FC = () => {
+
+    const {member}= useAppSelector((state)=> state.auth)
+
     return (
         <div className="absolute top-0 left-0 w-full p-2">
             {/* Container for the icons and wallet address */}
@@ -23,7 +27,7 @@ const TopLeftIcons: React.FC = () => {
 
                     {/* Level Section */}
                     <div className="flex flex-col justify-center py-1 px-4 bg-secondary/20 text-white rounded-full h-8 md:h-10 lg:h-14 w-32 md:w-40 lg:w-48">
-                        <div className="text-xs md:text-xs lg:text-xs text-left">Level 1/11</div>
+                        <div className="text-xs md:text-xs lg:text-xs text-left">Level {member?.curretLevelDetails?.levelNumber}/11</div>
                         <div className="w-full bg-secondary/30 rounded-full h-1.5 mt-1">
                             <div
                                 className="bg-secondary h-1.5 rounded-full"

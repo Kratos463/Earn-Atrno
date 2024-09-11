@@ -1,7 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
+@react-loader-spinner
 
 ::-webkit-scrollbar{
     width: 0%;

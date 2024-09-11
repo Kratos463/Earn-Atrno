@@ -1,6 +1,6 @@
+import Cookies from 'js-cookie';
 
 export const setCookie = (name: string, value: string, days: number) => {
-  const expires = new Date();
-  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;Secure;SameSite=Lax`;
+  console.log("Token value from set cokkie function", value)
+  Cookies.set(name, value, { expires: days, path: '/', sameSite: 'Lax' });
 };

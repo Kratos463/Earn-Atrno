@@ -11,6 +11,7 @@ var memberRouter = require('./routes/member.routes');
 var dailyLoginRewardsRouter = require('./routes/dailyLoginRewards.routes');
 var levelRouter = require('./routes/level.routes');
 var boosterRouter = require('./routes/booster.routes');
+var adminRouter = require('./routes/admin.routes');
 const apiKeyMiddleware = require('./middlewares/apiKey.middleware');
 
 var app = express();
@@ -66,6 +67,7 @@ app.use('/api/v1/member', memberRouter);
 app.use('/api/v1/daily-login', dailyLoginRewardsRouter);
 app.use('/api/v1/level', levelRouter);
 app.use('/api/v1/booster', boosterRouter);
+app.use('/api/v1/admin', adminRouter);
 
 
 

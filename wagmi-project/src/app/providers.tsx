@@ -5,7 +5,7 @@ import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Provider } from 'react-redux';
 import { store } from '@/redux/store';
-import { initializeWeb3Modal, config } from '@/wagmi'; // Adjust import path as needed
+import { initializeWeb3Modal, config } from '@/wagmi'; 
 
 export function Providers(props: {
   children: ReactNode;
@@ -14,7 +14,7 @@ export function Providers(props: {
   const [queryClient] = useState(() => new QueryClient());
 
   useEffect(() => {
-    initializeWeb3Modal(); // Initialize Web3Modal on mount
+    initializeWeb3Modal();
   }, []);
 
   return (

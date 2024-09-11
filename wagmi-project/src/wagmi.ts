@@ -1,5 +1,3 @@
-// wagmi.ts
-
 import { polygon } from 'wagmi/chains';
 import { createWeb3Modal } from '@web3modal/wagmi/react';
 import { defaultWagmiConfig } from '@web3modal/wagmi/react/config';
@@ -14,13 +12,12 @@ const metadata = {
   icons: ['https://yourapp.com/icon.png'],
 };
 
-const chains = [polygon] as const; // Added polygon here
+const chains = [polygon] as const; 
 export const config = defaultWagmiConfig({
   chains,
   projectId,
   metadata,
 });
-
 
 // Initialize Web3Modal
 export function initializeWeb3Modal() {
@@ -28,6 +25,5 @@ export function initializeWeb3Modal() {
     metadata,
     wagmiConfig: config,
     projectId,
-    enableAnalytics: true,
   });
 }

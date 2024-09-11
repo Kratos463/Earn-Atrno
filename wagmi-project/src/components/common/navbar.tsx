@@ -2,7 +2,7 @@
 
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faHome, faTasks, faUser, faUsers } from "@fortawesome/free-solid-svg-icons";
+import { faHome, faTasks, faUser, faUsers, faGift } from "@fortawesome/free-solid-svg-icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation"; // Correct hook for Next.js 13+ App Router
 
@@ -16,7 +16,7 @@ const Navbar = () => {
           { id: "home", icon: faHome, label: "Home", path: "/" },
           { id: "tasks", icon: faTasks, label: "Tasks", path: "/game/tasks" },
           { id: "friends", icon: faUsers, label: "Friends", path: "/game/friend" },
-          { id: "profile", icon: faUser, label: "Profile", path: "/profile" },
+          { id: "dailyreward", icon: faGift, label: "Daily Reward", path: "/game/dailyreward" },
         ].map(({ id, icon, label, path }) => {
           const isActive = currentPath === path; // Determine if the path is active
 
