@@ -1,36 +1,40 @@
 const Level = require("../models/level.model");
 
 const createLevel = async (req, res) => {
+    const {
+        name,
+        maximumPoints,
+        minimumPoints,
+        levelNumber,
+        onTap,
+        energy,
+        reward
+    } = req.body;
+
+    // Convert inputs to BigInt
+    const maxPoints = Number(maximumPoints);
+    const minPoints = Number(minimumPoints);
+    const rewardBigInt = Number(reward);
+
+    // Input validation
+    if (!name  || maxPoints <= 0n || !levelNumber || !onTap || !energy || rewardBigInt <= 0) {
+        return res.status(400).json({ message: "Please provide all required parameters.", success: false });
+    }
+
+    // Ensure that maximumPoints is greater than or equal to minimumPoints
+    if (maxPoints <= minPoints) {
+        return res.status(400).json({ message: "Maximum points must be greater than minimum points.", success: false });
+    }
+
+      // Check if an icon was uploaded
+      if (!req.files) {
+        return res.status(400).json({ error: "Please upload an icon", success: false });
+    }
+
+    const characterPath = req.files?.character[0].path.replace(/\\/g, '/');
+
     try {
-        const {
-            name,
-            character,
-            maximumPoints,
-            minimumPoints,
-            levelNumber,
-            onTap,
-            energy,
-            reward
-        } = req.body;
-
-        // Convert inputs to BigInt
-        const maxPoints = Number(maximumPoints);
-        const minPoints = Number(minimumPoints);
-        const rewardBigInt = Number(reward);
-
-        // Input validation
-        if (!name || !character || maxPoints <= 0n || !levelNumber || !onTap || !energy || rewardBigInt <= 0) {
-            return res.status(400).json({ message: "Please provide all required parameters.", success: false });
-        }
-
-        console.log('minimumPoints:', minPoints, 'maximumPoints:', maxPoints);
-        console.log('Type of minimumPoints:', typeof minPoints, 'Type of maximumPoints:', typeof maxPoints);
-
-        // Ensure that maximumPoints is greater than or equal to minimumPoints
-        if (maxPoints <= minPoints) {
-            return res.status(400).json({ message: "Maximum points must be greater than minimum points.", success: false });
-        }
-
+       
         // Check if the level with the same name or level number already exists
         const existingLevel = await Level.findOne({
             $or: [
@@ -46,14 +50,14 @@ const createLevel = async (req, res) => {
         // Create a new Level instance
         const newLevel = new Level({
             name: name,
-            character: character,
-            minimumPoints: minPoints,  
-            maximumPoints: maxPoints, 
+            character: characterPath,
+            minimumPoints: parseInt(minPoints),  
+            maximumPoints: parseInt(maxPoints), 
             totalAchievers: 0,
-            levelNumber: levelNumber,  
+            levelNumber: parseInt(levelNumber),  
             powerUps: {
-                onTap: onTap, 
-                energy: energy 
+                onTap: parseInt(onTap), 
+                energy: parseInt(energy) 
             },
             reward: rewardBigInt  
         });
@@ -187,11 +191,20 @@ const getSingleLevel = async (req, res) => {
             {
                 $lookup: {
                     from: 'members',
-                    let: { levelId: '$_id' },
+                    let: { levelId: '$_id', currentMemberCode: currentMember },
                     pipeline: [
-                        { $match: { $expr: { $eq: ['$currentLevel.levelId', '$$levelId'] } } },
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ['$currentLevel.levelId', '$$levelId'] },
+                                        { $ne: ['$referralCode', '$$currentMemberCode'] } // Exclude current member
+                                    ]
+                                }
+                            }
+                        },
                         { $project: { referralCode: 1, _id: 0 } },
-                        { $limit: 50 }
+                        { $sample: { size: 50 } }, // Get 50 random members who achieved this level
                     ],
                     as: 'paginatedAchievers'
                 }
@@ -216,23 +229,13 @@ const getSingleLevel = async (req, res) => {
                 $addFields: {
                     currentMemberPosition: {
                         $indexOfArray: [
-                            "$paginatedAchievers",
-                            {
-                                $arrayElemAt: [
-                                    "$paginatedAchievers",
-                                    {
-                                        $indexOfArray: [
-                                            "$paginatedAchievers",
-                                            { referralCode: currentMember }
-                                        ]
-                                    }
-                                ]
-                            }
+                            "$paginatedAchievers.referralCode",
+                            currentMember
                         ]
                     }
                 }
             },
-            { $project: { membersAtThisLevel: 0, achievers: 0 } }
+            { $project: { membersAtThisLevel: 0 } }
         ]);
 
         if (!level || level.length === 0) {
@@ -258,40 +261,60 @@ const getSingleLevel = async (req, res) => {
 };
 
 
-
-
-
 const getAllLevels = async (req, res) => {
     try {
+        // Get the page and limit from the request query (default to page 1 and limit 10 if not provided)
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        // Get the total count of levels before pagination
+        const totalLevels = await Level.countDocuments();
+
         const levels = await Level.aggregate([
             {
                 $lookup: {
-                    from: 'members', 
+                    from: 'members',
                     localField: '_id',
-                    foreignField: 'level',
+                    foreignField: 'levelCleared.levelId',
                     as: 'membersAtThisLevel'
                 }
             },
             {
                 $addFields: {
-                    memberCount: { $size: "$membersAtThisLevel" }
+                    totalAchievers: { $size: "$membersAtThisLevel" }
                 }
             },
             { $project: { membersAtThisLevel: 0 } },
-            { $sort: { levelNumber: 1 } }
+            { $sort: { levelNumber: 1 } },
+            { $skip: skip }, 
+            { $limit: limit }
         ]);
 
         if (!levels || levels.length === 0) {
             return res.status(404).json({ message: "No levels found.", success: false });
         }
 
-        return res.status(200).json({ message: "Levels retrieved successfully.", success: true, levels });
+        // Calculate total pages
+        const totalPages = Math.ceil(totalLevels / limit);
+
+        return res.status(200).json({
+            message: "Levels retrieved successfully.",
+            success: true,
+            levels,
+           pagination: {
+            totalLevels, 
+            totalPages,
+            currentPage: page,
+           }
+        });
 
     } catch (error) {
         console.error("Error getting levels:", error);
         return res.status(500).json({ message: "Internal server error.", success: false });
     }
 };
+
 
 
 

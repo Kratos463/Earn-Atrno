@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { formatNumber } from "@/helper/convertNumber";
 import { useAppDispatch, useAppSelector } from "@/redux/store";
 import { fetchAllDailyLoginReward, claimTodayLoginReward } from "@/redux/dailyTaskSlice";
@@ -12,45 +12,40 @@ const ClaimDailyReward = () => {
     const { member } = useAppSelector((state) => state.auth);
 
     useEffect(() => {
-        dispatch(fetchCurrentMember());
-        dispatch(fetchAllDailyLoginReward());
-    }, [dispatch]);
-
-    // Helper function to get the next reward day based on the current streak
-    const getNextRewardDay = () => {
-        if (member?.dailyLoginStreak != null) {
-            return member.dailyLoginStreak + 1;
+        // Only fetch data if it hasn't been fetched before
+        if (!member) {
+            dispatch(fetchCurrentMember());
         }
-        return null;
-    };
+        if (!dailyLoginRewards.length) {
+            dispatch(fetchAllDailyLoginReward());
+        }
+    }, [dispatch, member, dailyLoginRewards.length]);
 
-    // Helper function to check if today is the next day for reward
-    const isNextRewardDay = () => {
+    // Memoizing nextRewardDay and isNextRewardDay calculations
+    const nextRewardDay = useMemo(() => {
+        return member?.dailyLoginStreak != null ? member.dailyLoginStreak + 1 : 0;
+    }, [member]);
+
+    const isNextRewardDay = useMemo(() => {
         if (member?.nextDayRewardDate) {
             const nextRewardDate = new Date(member.nextDayRewardDate);
             const today = new Date();
-            // Remove the time part for comparison
             nextRewardDate.setHours(0, 0, 0, 0);
             today.setHours(0, 0, 0, 0);
             return today.getTime() === nextRewardDate.getTime();
         }
         return false;
-    };
-
-    // Determine the next reward day
-    const nextRewardDay = getNextRewardDay() || 0;
+    }, [member]);
 
     // Handler for claiming the daily reward
-    const handleClaimReward = () => {
-        if (isNextRewardDay()) {
-            dispatch(claimTodayLoginReward())
-                .unwrap()
-                .then((response) => {
-                    dispatch(fetchCurrentMember());
-                })
-                .catch((error) => {
-                    console.error("Failed to claim reward", error);
-                });
+    const handleClaimReward = async () => {
+        if (isNextRewardDay) {
+            try {
+                await dispatch(claimTodayLoginReward()).unwrap();
+                dispatch(fetchCurrentMember()); // Refresh member data
+            } catch (error) {
+                console.error("Failed to claim reward", error);
+            }
         }
     };
 
@@ -67,9 +62,9 @@ const ClaimDailyReward = () => {
             </p>
 
             <div className="grid grid-cols-4 gap-2">
-                {dailyLoginRewards?.map((day) => {
+                {dailyLoginRewards.map((day) => {
                     const isPastDay = day.day < nextRewardDay;
-                    const isToday = day.day === nextRewardDay && isNextRewardDay();
+                    const isToday = day.day === nextRewardDay && isNextRewardDay;
                     const isLocked = day.day > nextRewardDay;
 
                     return (
@@ -114,13 +109,13 @@ const ClaimDailyReward = () => {
             </div>
 
             <button
-                className={`bg-secondary rounded-md w-full mt-4 h-16 font-bold text-lg ${
-                    isNextRewardDay() ? "opacity-100" : "opacity-50 cursor-not-allowed"
+                className={`bg-secondary/50 rounded-md w-full mt-4 h-16 font-bold text-lg ${
+                    isNextRewardDay ? "opacity-100" : "opacity-50 cursor-not-allowed"
                 }`}
-                disabled={!isNextRewardDay()}
+                disabled={!isNextRewardDay}
                 onClick={handleClaimReward}
             >
-                {!isNextRewardDay() ? "Come Back Tomorrow" : "Claim Reward"}
+                {!isNextRewardDay ? "Come Back Tomorrow" : "Claim Reward"}
             </button>
         </div>
     );

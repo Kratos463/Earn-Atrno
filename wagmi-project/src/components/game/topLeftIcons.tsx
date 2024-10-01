@@ -1,13 +1,31 @@
-"use client"
+"use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
-import {useAppSelector} from '@/redux/store'
-
+import { useAppSelector, useAppDispatch } from '@/redux/store';
+import { useAccount } from 'wagmi';
+import { resetAuthState } from '@/redux/authSlice';
+import { useRouter } from "next/navigation";
 
 const TopLeftIcons: React.FC = () => {
+    const router = useRouter();
+    const dispatch = useAppDispatch();
+    const { member } = useAppSelector((state) => state.auth);
+    const { isConnected } = useAccount(); // Wagmi hook to track connection status
 
-    const {member}= useAppSelector((state)=> state.auth)
+    useEffect(() => {
+        if (!isConnected) {
+            // If the wallet is disconnected, handle logout logic here
+            dispatch(resetAuthState()); // Reset auth state in Redux
+            localStorage.removeItem('token');
+            router.push("/auth/signin");
+        }
+    }, [isConnected, dispatch]);
+
+    // Calculate progress dynamically
+    const progress = member && member.currentLevelDetails 
+        ? (member.wallet.coins % member.currentLevelDetails.maximumPoints) / member.currentLevelDetails.maximumPoints * 100
+        : 0;
 
     return (
         <div className="absolute top-0 left-0 w-full p-2">
@@ -26,25 +44,27 @@ const TopLeftIcons: React.FC = () => {
                     </Link>
 
                     {/* Level Section */}
-                    <div className="flex flex-col justify-center py-1 px-4 bg-secondary/20 text-white rounded-full h-8 md:h-10 lg:h-14 w-32 md:w-40 lg:w-48">
-                        <div className="text-xs md:text-xs lg:text-xs text-left">Level {member?.curretLevelDetails?.levelNumber}/11</div>
-                        <div className="w-full bg-secondary/30 rounded-full h-1.5 mt-1">
-                            <div
-                                className="bg-secondary h-1.5 rounded-full"
-                                style={{ width: '40%' }}
-                            ></div>
+                    <div className="flex flex-col w-32 justify-center py-1 px-4 bg-secondary/20 text-white rounded-full h-8 md:h-10 lg:h-14">
+                        <div className="w-full">
+                            <div className="flex justify-between">
+                                <p className="text-xs">{member?.currentLevelDetails?.name}</p>
+                                <p className="text-xs">{member?.currentLevelDetails?.levelNumber}<span className="text-[#95908a]">/ 11</span></p>
+                            </div>
+                            <div className="flex items-center border-2 border-[#43433b] rounded-full">
+                                <div className="w-full h-2 bg-[#43433b]/[0.6] rounded-full">
+                                    <div 
+                                        className="progress-gradient h-2 rounded-full" 
+                                        style={{ width: `${progress}%` }} 
+                                    ></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Right Section: Wallet Icon and Address */}
-                <div className="flex items-center space-x-1 py-1 px-3 bg-secondary/20 rounded-full h-8 md:h-10 lg:h-14">
-                    <img
-                        src='/assets/Images/wallet.png'
-                        alt="Wallet"
-                        className="w-6 h-6 md:w-8 md:h-8 lg:w-10 lg:h-10"
-                    />
-                    <span className="text-xs md:text-sm lg:text-sm text-white">0x1234...abcd</span> {/* Replace with actual address */}
+                {/* Web3Modal Account Button on the right */}
+                <div className="flex items-center">
+                    <w3m-account-button balance="hide" />
                 </div>
             </div>
         </div>

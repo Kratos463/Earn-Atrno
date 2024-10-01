@@ -14,9 +14,12 @@ const nextConfig = {
         },
       ];
     },
+    images: {
+      domains: ['atrnoarenaapi.aeternus.foundation'],
+    },
     env: {
       NEXT_PUBLIC_API_BASE_URL: isProduction
-        ? 'https://api.example.com'
+        ? 'https://atrnoarenaapi.aeternus.foundation/api/v1'
         : 'http://localhost:9000/api/v1',
         NEXT_PUBLIC_WC_PROJECT_ID: process.env.NEXT_PUBLIC_WC_PROJECT_ID || "002b8d71ece5792884cadf6dd885472b",
         NEXT_TELEMETRY_DISABLED: process.env.NEXT_TELEMETRY_DISABLED || 1,

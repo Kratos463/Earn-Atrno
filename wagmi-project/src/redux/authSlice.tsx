@@ -37,6 +37,15 @@ interface FriendListItem {
     };
 }
 
+interface TapCoinRequest{
+    incrementPoint: number
+}
+
+interface TapCoinResponse{
+    newCoinCount: number,
+    success: boolean
+}
+
 
 // Async thunk for registering or logging in the member
 export const registerOrLoginMember = createAsyncThunk<
@@ -79,6 +88,32 @@ export const checkWallet = createAsyncThunk<
                 return rejectWithValue(error.response.data.message || 'Failed to check wallet registration');
             }
             return rejectWithValue('Check wallet registration failed. Please try again.');
+        }
+    }
+);
+
+// Define the asyncThunk for tapCoin
+export const tapCoin = createAsyncThunk<
+    TapCoinResponse,
+    TapCoinRequest,
+    { rejectValue: string }
+>(
+    'member/tapCoin',
+    async ({ incrementPoint }, { rejectWithValue }) => {
+        try {
+            const response = await axios.post<TapCoinResponse>(
+                '/api/v1/member/tap-on-coin', 
+                { incrementPoint }, 
+                configHeader()
+            );
+            return response.data;
+        } catch (error: any) {
+            console.error("Error while updating the coins", error);
+            if (error.response && error.response.data) {
+                // Return detailed error message
+                return rejectWithValue(error.response.data.message || 'Failed to tap coin');
+            }
+            return rejectWithValue('Failed to tap coin. Please try again.');
         }
     }
 );
@@ -145,7 +180,8 @@ interface AuthState {
     friendList: FriendListItem[] | [];
     friendListLoading: boolean;
     currentMemberLoading: boolean,
-    member: Member
+    member: Member,
+    tapCoinLoading: boolean
 }
 
 const initialState: AuthState = {
@@ -158,12 +194,27 @@ const initialState: AuthState = {
     friendListLoading: false,
     currentMemberLoading: false,
     member:{} as Member,
+    tapCoinLoading: false
 };
 
 const authSlice = createSlice({
     name: "auth",
     initialState,
-    reducers: {},
+    reducers: {
+        resetAuthState: (state) => {
+            // Reset the auth state
+            state.user = null;
+            state.error = null;
+            state.isRegistered = false;
+            state.friendList = [];
+            state.member = {} as Member; // Reset the member details
+            state.registerLoading = false;
+            state.checkWalletLoading = false;
+            state.friendListLoading = false;
+            state.currentMemberLoading = false;
+            state.tapCoinLoading = false;
+        },
+    },
     extraReducers: (builder) => {
         builder
             .addCase(registerOrLoginMember.pending, (state) => {
@@ -218,8 +269,21 @@ const authSlice = createSlice({
                 state.currentMemberLoading = false,
                 state.error = action.payload || "An unknown error occurred"
             })
+            .addCase(tapCoin.pending, (state) => {
+                state.tapCoinLoading = true;
+                state.error = null;
+            })
+            .addCase(tapCoin.fulfilled, (state, action) => {
+                state.tapCoinLoading = false;
+            })
+            .addCase(tapCoin.rejected, (state, action) => {
+                state.tapCoinLoading = false;
+                state.error = action.payload as string;
+            })
             ;
     },
 });
+
+export const { resetAuthState } = authSlice.actions;
 
 export default authSlice.reducer;

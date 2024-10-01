@@ -24,7 +24,7 @@ export const SkeletonLoader: React.FC = () => (
 const InviteFriends: React.FC = React.memo(() => {
     const dispatch = useAppDispatch();
     const { friendList, friendListLoading, member } = useAppSelector((state) => state.auth);
-    const referralCode = member.referralCode;
+    const referralCode = member?.referralCode;
     const [copied, setCopied] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [countdown, setCountdown] = useState(0);
@@ -33,7 +33,7 @@ const InviteFriends: React.FC = React.memo(() => {
 
     // Copy referral code to clipboard
     const handleCopyCode = () => {
-        navigator.clipboard.writeText(`http://localhost:3000/signin/auth?startapp=${referralCode}`);
+        navigator.clipboard.writeText(`https://atrnoarena.aeternus.foundation/signin/auth?startapp=${referralCode}`);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
@@ -102,7 +102,11 @@ const InviteFriends: React.FC = React.memo(() => {
                     <div className="text-left">
                         <h3 className="text-sm font-medium">Invite a friend</h3>
                         <div className="flex items-center text-xs text-yellow-300 font-bold">
-                            +5000 <span className="text-white font-normal ml-1">for you and your friend</span>
+                                    <img
+                                        src='/assets/Images/star.png'
+                                        alt='image'
+                                        className="w-4 h-4 rounded-full mr-1"
+                                    /> +2500 <span className="text-white font-normal ml-1">for you and your friend</span>
                         </div>
                     </div>
                 </div>
@@ -122,11 +126,11 @@ const InviteFriends: React.FC = React.memo(() => {
                     <p className="text-gray-300 mb-4 text-xs text-left">
                         You and your friend will receive bonuses
                     </p>
-                    <div className="flex items-center justify-center w-full bg-secondary/30 p-2 rounded-md">
-                        <span className="text-lg text-yellow-300 font-bold font-mono">{referralCode}</span>
+                    <div className="flex items-center justify-start">
+                        <span className="text-lg text-white font-bold text-center  bg-secondary/50 w-full  p-2 rounded-md">Invite a friend</span>
                         <button
                             onClick={handleCopyCode}
-                            className="ml-2 p-1 bg-secondary rounded hover:bg-secondary/50 transition"
+                            className="ml-2 py-2 px-3 bg-secondary/50 rounded-md transition font-bold text-lg"
                         >
                             <FontAwesomeIcon icon={copied ? faCheckCircle : faCopy} />
                         </button>
@@ -175,8 +179,14 @@ const InviteFriends: React.FC = React.memo(() => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div>
-                                        <span className="text-md font-bold text-yellow-300">{formatNumber(friend.reward)}</span>
+                                    <div className="flex items-center gap-1">
+                                    <img
+                                        src='/assets/Images/star.png'
+                                        alt='image'
+                                        className="w-4 h-4 rounded-full"
+                                    />
+                                        <span className="text-sm font-bold text-yellow-300">
+                                            {formatNumber(friend.reward)}</span>
                                     </div>
                                 </li>
                             ))

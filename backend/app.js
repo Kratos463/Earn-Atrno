@@ -1,40 +1,50 @@
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var bodyParser = require('body-parser');
-var logger = require('morgan');
-var cors = require('cors');
+const express = require('express');
+const path = require('path');
+const cookieParser = require('cookie-parser');
+const bodyParser = require('body-parser');
+const logger = require('morgan');
+const cors = require('cors');
+const session = require('express-session');
 require('dotenv').config();
 
-var indexRouter = require('./routes/index');
-var memberRouter = require('./routes/member.routes');
-var dailyLoginRewardsRouter = require('./routes/dailyLoginRewards.routes');
-var levelRouter = require('./routes/level.routes');
-var boosterRouter = require('./routes/booster.routes');
-var adminRouter = require('./routes/admin.routes');
+const indexRouter = require('./routes/index');
+const memberRouter = require('./routes/member.routes');
+const dailyLoginRewardsRouter = require('./routes/dailyLoginRewards.routes');
+const levelRouter = require('./routes/level.routes');
+const boosterRouter = require('./routes/booster.routes');
+const adminRouter = require('./routes/admin.routes');
+const twitterRoutes = require('./routes/twitter.routes');
+const taskRoutes = require('./routes/tasks.routes');
 const apiKeyMiddleware = require('./middlewares/apiKey.middleware');
 
-var app = express();
+const app = express();
 
 // Define the whitelist for CORS
-var whitelist = [
+const whitelist = [
   'http://localhost:3000',
   'http://localhost:3001',
-]
+];
 
-var corsOptions = {
+const corsOptions = {
   origin: function (origin, callback) {
-      if (whitelist.indexOf(origin) !== -1 || !origin) {
-          callback(null, true);
-      } else {
-          callback(new Error('Not allowed by CORS'));
-      }
+    if (whitelist.indexOf(origin) !== -1 || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
   },
-  credentials: true
+  credentials: true,
 };
 
 
-app.use(express.static(path.join(__dirname, 'public')));
+
+// Use sessions to store OAuth tokens, secure should be true in production with HTTPS
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'default-secret-key', 
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: process.env.NODE_ENV === 'production' } // Set secure to true in production
+}));``
 
 // Middleware for parsing cookies
 app.use(cookieParser());
@@ -51,33 +61,31 @@ app.use(cors(corsOptions));
 // Middleware for serving static files
 app.use(express.static('public'));
 
-
+// HTTP request logger
 app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
 
 
-//intrigate middlewar on api 
-app.use('/api/v1', apiKeyMiddleware)
 
+// Integrate API key middleware on API routes
+app.use('/api/v1', apiKeyMiddleware);
+
+// Define all routes
 app.use('/', indexRouter);
 app.use('/api/v1/member', memberRouter);
 app.use('/api/v1/daily-login', dailyLoginRewardsRouter);
 app.use('/api/v1/level', levelRouter);
 app.use('/api/v1/booster', boosterRouter);
 app.use('/api/v1/admin', adminRouter);
+app.use('/api/v1/task', taskRoutes);
+app.use('/auth/twitter', twitterRoutes);
 
-
-
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
+// Catch 404 and forward to error handler
+app.use((req, res, next) => {
   res.status(404).send({ error: 'Not Found' });
 });
 
-// error handler
-app.use(function(err, req, res, next) {
+// Error handler
+app.use((err, req, res, next) => {
   res.status(err.status || 500).send({
     error: err.message || 'Internal Server Error',
   });

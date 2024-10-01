@@ -4,12 +4,14 @@ import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
 import authReducer from './authSlice'
 import dailyTaskReducer from './dailyTaskSlice'
 import levelReducer from './levelSlice'
+import officialTaskReducer from './officialTaskSlice'
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     dailyTask : dailyTaskReducer,
-    level: levelReducer
+    level: levelReducer,
+    officialTask: officialTaskReducer
   },
 });
 

@@ -21,7 +21,7 @@ export interface Member {
     levelDetails: LevelDetails;
     energyLevelDetails: EnergyLevelDetails;
     tapLevelDetails: TapLevelDetails;
-    curretLevelDetails: CurrentLevel
+    currentLevelDetails: LevelDetails
   }
   
   export interface Wallet {

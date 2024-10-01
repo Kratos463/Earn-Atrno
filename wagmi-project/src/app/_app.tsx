@@ -1,12 +1,15 @@
-// _app.tsx or index.tsx (depending on your setup)
-import { Providers } from './providers'; // Adjust the path as needed
-
+import { Providers } from './providers';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function MyApp({ Component, pageProps }: { Component: React.ComponentType; pageProps: any }) {
+  const initialState = {};
+
   return (
-      <Providers>
-        <Component {...pageProps} />
-      </Providers>
+    <Providers initialState={initialState}>
+      <Component {...pageProps} />
+      <ToastContainer />
+    </Providers>
   );
 }
 

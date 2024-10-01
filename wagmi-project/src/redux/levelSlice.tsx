@@ -2,6 +2,7 @@ import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import axios from "axios";
 import { configHeader } from '../helper/configHeader';
 import { Level, LevelRequest } from './types/levels';
+import { Booster, EnergyBoosterResponse } from './types/booster';
 
 
 export const fetchLevelLeaderBoard = createAsyncThunk<
@@ -32,16 +33,71 @@ export const fetchLevelLeaderBoard = createAsyncThunk<
     }
 );
 
+
+export const fetchEnergyBooster = createAsyncThunk<
+EnergyBoosterResponse,
+void,
+{ rejectValue: string }
+>(
+    'level/fetchEnergyBooster',
+    async(_, {rejectWithValue}) => {
+        try{
+            const response = await axios.get<EnergyBoosterResponse>(
+                "/api/v1/booster/single-energy-booster",
+                configHeader() 
+            );
+
+            return response.data;
+        }catch(error: any){
+            console.log("Error while fetch energy booster", error);
+            if (axios.isAxiosError(error) && error.response) {
+                return rejectWithValue(error.response.data.message || "An error occurred");
+            }
+            return rejectWithValue("Failed to fetch energy booster. Please try again.");
+        }
+    }
+);
+
+export const fetchTapBooster = createAsyncThunk<
+EnergyBoosterResponse,
+void,
+{ rejectValue: string }
+>(
+    'level/fetchTapBooster',
+    async(_, {rejectWithValue}) => {
+        try{
+            const response = await axios.get<EnergyBoosterResponse>(
+                "/api/v1/booster/single-tap-booster",
+                configHeader() 
+            );
+
+            return response.data;
+        }catch(error: any){
+            console.log("Error while fetch energy booster", error);
+            if (axios.isAxiosError(error) && error.response) {
+                return rejectWithValue(error.response.data.message || "An error occurred");
+            }
+            return rejectWithValue("Failed to fetch energy booster. Please try again.");
+        }
+    }
+);
+
 interface LevelState {
     levelLoading: boolean;
     error: string | null;
-    level: Level | null
+    level: Level | null,
+    energyBooster : Booster | null
+    energyLoading: boolean,
+    tapBooster: Booster| null
 }
 
 const initialState: LevelState = {
     levelLoading: false,
     error: null,
-    level: {} as Level
+    level: {} as Level,
+    energyBooster : {} as Booster,
+    energyLoading: false,
+    tapBooster: {} as Booster
 }
 
 
@@ -63,6 +119,32 @@ const levelSlice = createSlice({
             .addCase(fetchLevelLeaderBoard.rejected, (state, action)=> {
                 state.error = action.payload || "An unknown error occurred";
                 state.levelLoading = false
+            })
+            .addCase(fetchEnergyBooster.pending, (state)=> {
+                state.energyLoading = true,
+                state.error = null
+            })
+            .addCase(fetchEnergyBooster.fulfilled, (state, action : PayloadAction<EnergyBoosterResponse>)=> {
+                state.error = null,
+                state.energyLoading= false,
+                state.energyBooster = action.payload.level
+            })
+            .addCase(fetchEnergyBooster.rejected, (state, action)=> {
+                state.error = action.payload || "An unknown error occurred";
+                state.energyLoading = false
+            })
+            .addCase(fetchTapBooster.pending, (state)=> {
+                state.energyLoading = true,
+                state.error = null
+            })
+            .addCase(fetchTapBooster.fulfilled, (state, action : PayloadAction<EnergyBoosterResponse>)=> {
+                state.error = null,
+                state.energyLoading= false,
+                state.tapBooster = action.payload.level
+            })
+            .addCase(fetchTapBooster.rejected, (state, action)=> {
+                state.error = action.payload || "An unknown error occurred";
+                state.energyLoading = false
             })
     }
 })

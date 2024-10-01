@@ -2,7 +2,7 @@
 
 import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faHome, faTasks, faUser, faUsers, faGift } from "@fortawesome/free-solid-svg-icons";
+import { faHome, faTasks, faUsers, faGift } from "@fortawesome/free-solid-svg-icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation"; // Correct hook for Next.js 13+ App Router
 
@@ -10,7 +10,7 @@ const Navbar = () => {
   const currentPath = usePathname(); // Get the current path
 
   return (
-    <nav className="bg-primary w-full fixed bottom-0 left-0 flex items-center mt-3">
+    <nav className="bg-primary w-full mx-auto fixed bottom-0  flex items-center justify-center">
       <ul className="flex justify-between md:justify-evenly items-center w-full">
         {[
           { id: "home", icon: faHome, label: "Home", path: "/" },

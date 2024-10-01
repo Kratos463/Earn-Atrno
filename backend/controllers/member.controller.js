@@ -27,7 +27,7 @@ const handleReferralReward = async (rbcode, newMember) => {
     throw new Error("Referral code incorrect");
   }
 
-  referredByUser.wallet.coins += 5000;
+  referredByUser.wallet.coins += 2500;
   await referredByUser.save();
 
   // Create and save referral record
@@ -74,7 +74,7 @@ const registerOrLoginMember = async (req, res) => {
 
     // Register a new member
     const referralCode = await generateUniqueReferralCode();
-    const initialCoin = 5000;
+    var initialCoin = 2500;
 
     // Find the appropriate level based on initial coins
     const level = await Level.findOne({
@@ -85,6 +85,8 @@ const registerOrLoginMember = async (req, res) => {
     if (!level) {
       return res.status(400).json({ message: "No suitable level found.", success: false });
     }
+
+    initialCoin += level.reward
 
     const nextDay = new Date();
     nextDay.setHours(0, 0, 0, 0);
@@ -141,13 +143,12 @@ const registerOrLoginMember = async (req, res) => {
   }
 };
 
-module.exports = registerOrLoginMember;
-
-
 
 // check memeber with walletAddress is already registered or not
 const checkWallet = async (req, res) => {
   const { walletAddress } = req.query;
+
+  console.log("wallet address", walletAddress)
 
   // Basic validation
   if (!walletAddress) {
@@ -173,21 +174,7 @@ const checkWallet = async (req, res) => {
 // get current member details 
 const fetchMember = async (req, res) => {
   try {
-    const memberId = req.member._id;
-
-    // Check if the member data is cached in Redis
-    const cachedMember = await redisClient.get(`member:${memberId}`);
-
-    if (cachedMember) {
-      const memberObject = JSON.parse(cachedMember);
-      return res.status(200).json({
-        message: "Current User fetched successfully from cached memory",
-        success: true,
-        member: [memberObject]
-      });
-    }
-
-  
+    const memberId = req.member._id;  
     const member = await Member.aggregate([
       { $match: { _id: memberId } },
       {
@@ -195,11 +182,11 @@ const fetchMember = async (req, res) => {
           from: "levels",
           localField: "currentLevel.levelId",
           foreignField: "_id",
-          as: "curretLevelDetails"
+          as: "currentLevelDetails"
         }
       },
       {
-        $unwind: '$curretLevelDetails'
+        $unwind: '$currentLevelDetails'
       },
       {
         $lookup: {
@@ -234,7 +221,7 @@ const fetchMember = async (req, res) => {
           nextDayRewardDate: 1,
           accountStatus: 1,
           dailyTaskProgress: 1,
-          curretLevelDetails: 1,
+          currentLevelDetails: 1,
           energyLevelDetails: 1,
           tapLevelDetails: 1,
           "wallet.coins": 1,
@@ -245,11 +232,10 @@ const fetchMember = async (req, res) => {
       }
     ]).exec();
 
+
     if (!member || member.length === 0) {
       return res.status(400).json({ message: "Member not found", success: false });
     }
-    const memberObject = member[0];
-    await redisClient.setEx(`member:${memberId}`, 600, JSON.stringify(memberObject));
 
     return res.status(200).json({
       message: "Current User fetched successfully",
@@ -384,7 +370,7 @@ const fetchFriendList = async (req, res) => {
       {
         $lookup: {
           from: "levels",
-          localField: "friendsDetails.level",
+          localField: "friendsDetails.currentLevel.levelId",
           foreignField: "_id",
           as: "levelDetails"
         }

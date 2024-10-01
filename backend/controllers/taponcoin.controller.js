@@ -1,26 +1,28 @@
-const redisClient = require("../utils/redisConnect.js")
-const Member = require('../models/member.model.js');
+const Level = require("../models/level.model.js");
+const Member = require("../models/member.model.js");
+const redisClient = require("../utils/redisConnect.js"); // Assuming you're importing your Redis client
 
 // Function to increment coin count in Redis by a specific value
 async function incrementCoin(memberId, incrementValue) {
     try {
         const redisKey = `member:${memberId}:coin`;
 
-        // Ensure incrementValue is a string
+        // Perform the Redis INCRBY operation using sendCommand
         const newCoinCount = await redisClient.sendCommand(['INCRBY', redisKey, incrementValue.toString()]);
 
-        return newCoinCount;
+        return newCoinCount; // Return the new coin count
     } catch (error) {
         console.error('Error incrementing coin in Redis:', error);
-        throw error;
+        throw error; // Throw the error to handle it in the calling function
     }
 }
 
-
-// API Endpoint to handle coin tap with variable increment values
+// API Endpoint to handle coin tap with variable increment values from frontend
 const tapCoin = async (req, res) => {
     const memberId = req.member._id;
+    const { incrementPoint } = req.body;
 
+    // Validation for memberId and incrementPoint
     if (!memberId) {
         return res.status(400).json({ error: 'User ID is required' });
     }
@@ -32,7 +34,6 @@ const tapCoin = async (req, res) => {
             return res.status(400).json({ message: 'Member not found', success: false });
         }
 
-        const incrementPoint = member.powerUps.onTap;
         const newCoinCount = await incrementCoin(memberId, incrementPoint);
 
         return res.status(200).json({ success: true, newCoinCount });
@@ -42,9 +43,9 @@ const tapCoin = async (req, res) => {
     }
 };
 
+// Function to synchronize coins from Redis to MongoDB periodically
 async function syncCoinsToMongo() {
     try {
-        // Use sendCommand to get all keys that match the pattern
         const keys = await redisClient.sendCommand(['KEYS', 'member:*:coin']);
 
         if (keys.length === 0) {
@@ -54,21 +55,36 @@ async function syncCoinsToMongo() {
 
         for (const key of keys) {
             const memberId = key.split(':')[1];
-            
-            // Use sendCommand to get the coin count value
             const coinCount = await redisClient.sendCommand(['GET', key]);
 
-            if (coinCount) { 
+            if (coinCount) {
                 const member = await Member.findById(memberId);
                 if (member) {
-                    // Calculate the new coin count
-                    const newCoinCount = (member.wallet.coins || 0) + parseInt(coinCount, 10);
+                    const newCoinCountFromRedis = parseInt(coinCount, 10);
+                    const newLevel = await Level.findOne({ minimumPoints: { $lte: newCoinCountFromRedis } }).sort({ minimumPoints: -1 });
 
-                    // Update the new coin count in MongoDB
-                    await Member.findByIdAndUpdate(memberId, { 'wallet.coins': newCoinCount });
+                    if (newLevel) {
+                        const updateResult = await Member.findByIdAndUpdate(memberId, {
+                            'wallet.coins': newCoinCountFromRedis,
+                            'currentLevel.levelId': newLevel._id,
+                            'currentLevel.levelNumber': newLevel.levelNumber
+                        });
 
-                    // Optionally reset the coin count in Redis after syncing
-                    await redisClient.sendCommand(['DEL', key]);
+                        if (updateResult) {
+                            await redisClient.set(`member:${memberId}`, JSON.stringify({
+                                ...member.toObject(),
+                                wallet: { coins: newCoinCountFromRedis },
+                                currentLevel: { levelId: newLevel._id, levelNumber: newLevel.levelNumber }
+                            }));
+                            await redisClient.sendCommand(['DEL', key]);
+
+                            console.log(`Member ${memberId} updated with ${newCoinCountFromRedis} coins and level ${newLevel.name}`);
+                        } else {
+                            console.error(`Failed to update member ${memberId} in MongoDB.`);
+                        }
+                    } else {
+                        console.warn(`No level found for total coins: ${newCoinCountFromRedis}`);
+                    }
                 } else {
                     console.warn(`No member found with ID ${memberId}`);
                 }
@@ -77,13 +93,14 @@ async function syncCoinsToMongo() {
             }
         }
 
-        console.log('Coins synchronized from Redis to MongoDB.');
+        console.log('Coins and levels synchronized from Redis to MongoDB.');
     } catch (error) {
-        console.error('Error synchronizing coins to MongoDB:', error);
+        console.error('Error synchronizing coins and levels to MongoDB:', error);
     }
 }
 
-// setInterval(syncCoinsToMongo, 40000);
 
+// Set an interval to synchronize coins to MongoDB every 1000 ms (1 second)
+setInterval(syncCoinsToMongo, 1000);
 
 module.exports = { tapCoin };

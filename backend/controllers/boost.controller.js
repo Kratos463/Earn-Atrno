@@ -44,98 +44,7 @@ const createEnergyBoost = async (req, res) => {
     }
 };
 
-const boostMemberEnergy = async (req, res) => {
-    const memberId = req.member._id;
 
-    try {
-        const member = await Member.findById(memberId).populate('energyLevel').exec();
-
-        if (!member) {
-            return res.status(404).json({ message: "Member not found", success: false });
-        }
-
-        let nextEnergyBoost;
-        if (!member.energyLevel) {
-            // If no energy boost applied, get level 1 boost
-            nextEnergyBoost = await EnergyBoost.findOne({ level: 1 });
-            if (!nextEnergyBoost) {
-                return res.status(400).json({ message: "No boost available for level 1", success: false });
-            }
-        } else {
-            // Get next boost level if already boosted
-            const currentLevel = member.energyLevel.level;
-            nextEnergyBoost = await EnergyBoost.findOne({ level: currentLevel + 1 });
-            if (!nextEnergyBoost) {
-                return res.status(400).json({ message: "Maximum boost level reached", success: false });
-            }
-        }
-
-        if (nextEnergyBoost.cost > member.wallet.coin) {
-            return res.status(400).json({ message: "Insufficient balance", success: false });
-        }
-
-        member.wallet.coins -= nextEnergyBoost.cost;
-        member.energyLevel = nextEnergyBoost._id;
-        member.powerUps.energy += nextEnergyBoost.energy;
-
-        await member.save();
-
-        return res.status(200).json({ message: "Energy boost applied successfully", success: true });
-
-    } catch (error) {
-        console.error("Error while boosting member energy:", error);
-        return res.status(500).json({ message: "Internal server error.", success: false });
-    }
-};
-
-const boostMemberMultiTap = async (req, res) => {
-    const memberId = req.member._id;
-
-    try {
-        // Find member and populate tapLevel in a single query
-        const member = await Member.findById(memberId).populate('tapLevel').exec();
-
-        if (!member) {
-            return res.status(404).json({ message: "Member not found", success: false });
-        }
-
-        // Determine the next multitap boost level
-        let nextMultiTapBoost;
-        if (!member.tapLevel) {
-            // If no multitap boost applied, get level 1 boost
-            nextMultiTapBoost = await MultitapBoost.findOne({ level: 1 });
-            if (!nextMultiTapBoost) {
-                return res.status(400).json({ message: "No multitap boost available for level 1", success: false });
-            }
-        } else {
-            // Get the next boost level based on the current level
-            const currentLevel = member.tapLevel.level;
-            nextMultiTapBoost = await MultitapBoost.findOne({ level: currentLevel + 1 });
-            if (!nextMultiTapBoost) {
-                return res.status(400).json({ message: "Maximum boost level reached", success: false });
-            }
-        }
-
-        // Check if the member has enough coins
-        if (nextMultiTapBoost.cost > member.wallet.coin) {
-            return res.status(400).json({ message: "Insufficient balance", success: false });
-        }
-
-        // Deduct the cost from the member's wallet and apply the boost
-        member.wallet.coins -= nextMultiTapBoost.cost;
-        member.tapLevel = nextMultiTapBoost._id;
-        member.powerUps.onTap += nextMultiTapBoost.tap;
-
-        // Save the updated member details
-        await member.save();
-
-        return res.status(200).json({ message: "Multi-tap boost applied successfully", success: true });
-
-    } catch (error) {
-        console.error("Error while boosting member multitap:", error);
-        return res.status(500).json({ message: "Internal server error", success: false });
-    }
-};
 
 const deleteEnergyBoost = async (req, res) => {
     try {
@@ -191,7 +100,7 @@ const updateEnergyBoost = async (req, res) => {
             return res.status(404).json({ message: "Energy boost not found", success: false });
         }
 
-        return res.status(200).json({ message: "Energy boost updated successfully",energyBoost, success: true });
+        return res.status(200).json({ message: "Energy boost updated successfully", energyBoost, success: true });
     } catch (error) {
         console.error("Error while updating energy boost:", error);
         return res.status(500).json({ message: "Internal server error", success: false });
@@ -214,7 +123,7 @@ const updateMultitapBoost = async (req, res) => {
             return res.status(404).json({ message: "Multitap boost not found", success: false });
         }
 
-        return res.status(200).json({ message: "Multitap boost updated successfully",multitapBoost, success: true });
+        return res.status(200).json({ message: "Multitap boost updated successfully", multitapBoost, success: true });
     } catch (error) {
         console.error("Error while updating multitap boost:", error);
         return res.status(500).json({ message: "Internal server error", success: false });
@@ -250,16 +159,119 @@ const getAllEnergyBooster = async (req, res) => {
     }
 }
 
+const getSingleEnergyBooster = async (req, res) => {
+    const energyId = req?.member.energyLevel;
+
+    try {
+        const energyLevels = await EnergyBoost.find();
+
+        const currentLevelIndex = energyLevels.findIndex(level => level._id.toString() === energyId.toString());
+        const firstIndex = energyLevels[0]
+
+        if (currentLevelIndex !== -1) {
+            const nextLevel = energyLevels[currentLevelIndex + 1];
+            return res.status(200).json({ success: true, message: "Energy Booster fetched", level: nextLevel });
+        } else {
+            // If the energyId does not exist, return the first energy level
+            return res.status(200).json({ success: true, message: "Energy Booster fetched", level: firstIndex });
+        }
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
+const getSingleTapBooster = async (req, res) => {
+    const energyId = req?.member.energyLevel;
+
+    try {
+        const energyLevels = await MultitapBoost.find();
+
+        const currentLevelIndex = energyLevels.findIndex(level => level._id.toString() === energyId.toString());
+        const firstIndex = energyLevels[0]
+
+        if (currentLevelIndex !== -1) {
+            const nextLevel = energyLevels[currentLevelIndex + 1] || energyLevels[0]; // Return next or first if it's the last level
+            return res.status(200).json({ success: true, message: "Tap booster fetched", level: nextLevel });
+        } else {
+            // If the energyId does not exist, return the first energy level
+            return res.status(200).json({ success: true, message: "Tap Booster fetched", level: firstIndex });
+        }
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+
+
+const boostBooster = async (req, res, type) => {
+    const { boosterId } = req.params;
+    const member = req.member;
+
+    if (!boosterId) {
+        return res.status(400).json({ message: `${type} ID is required.`, success: false });
+    }
+
+    try {
+        const BoosterModel = type === 'energy' ? EnergyBoost : MultitapBoost;
+
+        // Find the booster by ID
+        const booster = await BoosterModel.findById(boosterId);
+
+        if (!booster) {
+            return res.status(404).json({ message: `${type.charAt(0).toUpperCase() + type.slice(1)} booster not found.`, success: false });
+        }
+
+        if (booster.cost > member.wallet.coins) {
+            return res.status(400).json({ message: "Insufficient Coins", success: false });
+        }
+
+        // Deduct coins and update member's power-ups
+        member.wallet.coins -= booster.cost;
+
+        if (type === 'energy') {
+            member.energyLevel = booster._id;
+            member.powerUps.energy += booster.energy;
+        } else if (type === 'tap') {
+            member.tapLevel = booster._id;
+            member.powerUps.OnTap += booster.tap;
+        }
+
+        await member.save();
+
+        return res.status(200).json({
+            message: `${type.charAt(0).toUpperCase() + type.slice(1)} level updated successfully.`,
+            success: true
+        });
+    } catch (error) {
+        console.error(`Error updating ${type} booster:`, error);
+        return res.status(500).json({ message: `An error occurred while updating ${type} booster.`, error, success: false });
+    }
+};
+
+// Boost energy booster
+const boostEnergyBooster = async (req, res) => {
+    return boostBooster(req, res, 'energy');
+};
+
+// Boost tap booster
+const boostTapBooster = async (req, res) => {
+    return boostBooster(req, res, 'tap');
+};
+
+
 
 module.exports = {
     createMultiTapBoost,
     createEnergyBoost,
-    boostMemberEnergy,
-    boostMemberMultiTap,
     deleteEnergyBoost,
     deleteMultiTapBoost,
     updateEnergyBoost,
     updateMultitapBoost,
     getAllMultiTapBooster,
-    getAllEnergyBooster
+    getAllEnergyBooster,
+    getSingleEnergyBooster,
+    getSingleTapBooster,
+    boostEnergyBooster,
+    boostTapBooster
 };

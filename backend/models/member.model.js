@@ -112,21 +112,21 @@ const memberSchema = new Schema({
 }, { timestamps: true });
 
 
-// Middleware to update cache after save
-memberSchema.post('save', async function (doc) {
-    const memberId = doc._id.toString();
-    await redisClient.setEx(`member:${memberId}`, 3600, JSON.stringify(doc));
-    console.log(`Cache updated for member: ${memberId}`);
-});
+// // Middleware to update cache after save
+// memberSchema.post('save', async function (doc) {
+//     const memberId = doc._id.toString();
+//     await redisClient.setEx(`member:${memberId}`, 3600, JSON.stringify(doc));
+//     console.log(`Cache updated for member: ${memberId}`);
+// });
 
-// Middleware to update cache after findOneAndUpdate
-memberSchema.post('findOneAndUpdate', async function (doc) {
-    if (doc) {
-        const memberId = doc._id.toString();
-        await redisClient.setEx(`member:${memberId}`, 3600, JSON.stringify(doc));
-        console.log(`Cache updated for member: ${memberId}`);
-    }
-});
+// // Middleware to update cache after findOneAndUpdate
+// memberSchema.post('findOneAndUpdate', async function (doc) {
+//     if (doc) {
+//         const memberId = doc._id.toString();
+//         await redisClient.setEx(`member:${memberId}`, 3600, JSON.stringify(doc));
+//         console.log(`Cache updated for member: ${memberId}`);
+//     }
+// });
 
 const Member = model("Member", memberSchema)
 

@@ -7,18 +7,18 @@ export default function DefaultLayout({
 }: {
   children: React.ReactNode;
 }) {
-
   return (
     <>
       <div>
-          <main>
-            <div className="bg-dark h-screen overflow-scroll">
-              {children}
-            </div>
-          </main>
-          <Navbar />
+        <main>
+          <div
+            className="bg-dark overflow-scroll h-screen"
+          >
+            {children}
+          </div>
+        </main>
+        <Navbar />
       </div>
-
     </>
   );
 }

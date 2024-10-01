@@ -9,6 +9,8 @@ const extractTokenFromHeader = (authorizationHeader) => {
 };
 
 const VerifyMember = async (req, res, next) => {
+    const authorizationHeader = req.headers.authorization;
+
     const token = extractTokenFromHeader(req.headers.authorization);
 
     if (!token) {

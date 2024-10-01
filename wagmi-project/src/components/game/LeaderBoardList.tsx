@@ -10,7 +10,7 @@ const LeaderboardList: React.FC = () => {
     const dispatch = useAppDispatch();
     const { level, levelLoading } = useAppSelector((state) => state.level); // loading state from redux
     const { member } = useAppSelector((state) => state.auth);
-    const [currentLevel, setCurrentLevel] = useState<number>(member?.curretLevelDetails?.levelNumber || 0);
+    const [currentLevel, setCurrentLevel] = useState<number>(member?.currentLevelDetails?.levelNumber || 0);
 
     useEffect(() => {
         dispatch(fetchCurrentMember());
@@ -31,7 +31,7 @@ const LeaderboardList: React.FC = () => {
     };
 
     return (
-        <div className="pb-16 p-4 text-white mx-auto w-full max-w-[600px]">
+        <div className="pb-16 p-4 text-white mx-auto w-full max-w-[600px] h-screen">
             <div className="flex flex-col items-center mb-6">
             
                     <img
