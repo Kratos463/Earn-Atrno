@@ -3,7 +3,8 @@ const { Schema, model } = require("mongoose")
 const multitapBoostSchema = new Schema({
     level: {
         type: Number,
-        required: true
+        required: true,
+        unique: true
     },
     cost: {
         type: Number,
@@ -18,7 +19,8 @@ const multitapBoostSchema = new Schema({
 const energyLimitBoostSchema = new Schema({
     level: {
         type: Number,
-        required: true
+        required: true,
+        unique: true
     },
     cost: {
         type: Number,

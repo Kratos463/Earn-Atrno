@@ -1,22 +1,19 @@
-var express = require('express');
+const express = require('express');
+const { tapCoin } = require('../controllers/taponcoin.controller');
 const {
-    registerOrLoginMember,
-    checkWallet,
     claimCurrentDayLoginReward,
     fetchMember,
-    fetchFriendList
+    fetchFriendList,
+    fetchMembers
 } = require('../controllers/member.controller');
 const VerifyMember = require('../middlewares/verifyMember.middleware');
-const { tapCoin } = require('../controllers/taponcoin.controller');
-var router = express.Router();
+const router = express.Router();
 
 
-router.route("/register-member").post(registerOrLoginMember)
-router.route("/check-wallet").get(checkWallet)
-router.route("/claim-current-day-login-reward").post(VerifyMember, claimCurrentDayLoginReward)
-router.route("/get-member").get(VerifyMember, fetchMember)
-router.route("/friend-list").get(VerifyMember, fetchFriendList)
-
-router.route("/tap-on-coin").post(VerifyMember, tapCoin)
+router.route("/").get(fetchMembers)
+router.route("/rewards/claim/daily").post(VerifyMember, claimCurrentDayLoginReward);
+router.route("/current").get(VerifyMember, fetchMember);
+router.route("/friends").get(VerifyMember, fetchFriendList);
+router.route("/coins/tap").post(VerifyMember, tapCoin);
 
 module.exports = router;

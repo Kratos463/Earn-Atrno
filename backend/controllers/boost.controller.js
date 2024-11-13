@@ -1,210 +1,149 @@
 const { MultitapBoost, EnergyBoost } = require("../models/boost.model");
 const Member = require("../models/member.model");
 
-
-// for create multi tap booster level
-const createMultiTapBoost = async (req, res) => {
-    const { level, cost, tap } = req.body;
+// Utility function for creating a boost (common for both multitap and energy boost)
+const createBoost = async (req, res, BoostModel, type) => {
+    const { level, cost, tap, energy } = req.body;
 
     try {
-        const lastMultitapEntry = await MultitapBoost.findOne().sort({ createdAt: -1 }).exec();
+        const lastEntry = await BoostModel.findOne().sort({ createdAt: -1 }).exec();
 
-        if (lastMultitapEntry && (level <= lastMultitapEntry.level || cost <= lastMultitapEntry.cost || !tap)) {
+        // Validation based on last entry's level and cost
+        if (lastEntry && (level <= lastEntry.level || cost <= lastEntry.cost || (!tap && !energy))) {
             return res.status(400).json({ message: "Level and cost must be greater than the last entry", success: false });
         }
-        const newMultitap = new MultitapBoost({ level, cost, tap });
-        await newMultitap.save();
 
-        return res.status(200).json({ message: "Multitap booster created successfully", success: true });
+        // Create a new boost object
+        const newBoost = new BoostModel({ level, cost, tap, energy });
+        await newBoost.save();
+
+        return res.status(200).json({ message: `${type} boost created successfully`, success: true, boosts: newBoost });
     } catch (error) {
-        console.error("Error while creating multitap booster:", error);
+        console.error(`Error while creating ${type} boost:`, error);
         return res.status(500).json({ message: "Internal server error.", success: false });
     }
 };
 
-// for create energy booster level
-const createEnergyBoost = async (req, res) => {
-    const { level, cost, energy } = req.body;
+// Create Multitap Booster Level
+const createMultiTapBoost = (req, res) => createBoost(req, res, MultitapBoost, 'Multitap');
 
+// Create Energy Booster Level
+const createEnergyBoost = (req, res) => createBoost(req, res, EnergyBoost, 'Energy');
+
+// Utility function for deleting a boost (common for both multitap and energy boost)
+const deleteBoost = async (req, res, BoostModel, type, idParam) => {
     try {
-        // Find the most recent EnergyBoost entry
-        const lastEnergyBoostEntry = await EnergyBoost.findOne().sort({ createdAt: -1 }).exec();
+        const boostId = req.params[idParam];
+        const boost = await BoostModel.findByIdAndDelete(boostId);
 
-        if (lastEnergyBoostEntry && (level <= lastEnergyBoostEntry.level || cost <= lastEnergyBoostEntry.cost || !energy)) {
-            return res.status(400).json({ message: "Level and cost must be greater than the last entry", success: false });
+        if (!boost) {
+            return res.status(404).json({ message: `${type} boost not found`, success: false });
         }
 
-        const newEnergyBoost = new EnergyBoost({ level, cost, energy });
-        await newEnergyBoost.save();
-
-        return res.status(200).json({ message: "Energy boost created successfully", success: true });
+        return res.status(200).json({ message: `${type} boost deleted successfully`, success: true });
     } catch (error) {
-        console.error("Error while creating energy boost:", error);
-        return res.status(500).json({ message: "Internal server error.", success: false });
-    }
-};
-
-
-
-const deleteEnergyBoost = async (req, res) => {
-    try {
-        const { energyId } = req.params;
-
-        // Attempt to find and delete the energy boost
-        const energyBoost = await EnergyBoost.findByIdAndDelete(energyId);
-
-        // Check if the energy boost was found and deleted
-        if (!energyBoost) {
-            return res.status(404).json({ message: "Energy boost not found", success: false });
-        }
-
-        return res.status(200).json({ message: "Energy boost deleted successfully", success: true });
-    } catch (error) {
-        console.error("Error while deleting energy boost:", error);
+        console.error(`Error while deleting ${type} boost:`, error);
         return res.status(500).json({ message: "Internal server error", success: false });
     }
 };
 
+// Delete Multitap Boost
+const deleteMultiTapBoost = (req, res) => deleteBoost(req, res, MultitapBoost, 'Multitap', 'multiTapId');
 
-const deleteMultiTapBoost = async (req, res) => {
+// Delete Energy Boost
+const deleteEnergyBoost = (req, res) => deleteBoost(req, res, EnergyBoost, 'Energy', 'energyId');
+
+// Utility function for updating a boost (common for both multitap and energy boost)
+const updateBoost = async (req, res, BoostModel, type, idParam) => {
     try {
-        const { multiTapId } = req.params;
-
-        // Attempt to find and delete the energy boost
-        const multiTapBoost = await MultitapBoost.findByIdAndDelete(multiTapId);
-
-        // Check if the energy boost was found and deleted
-        if (!multiTapBoost) {
-            return res.status(404).json({ message: "Multi tap boost not found", success: false });
-        }
-
-        return res.status(200).json({ message: "Multi tap boost deleted successfully", success: true });
-    } catch (error) {
-        console.error("Error while deleting energy boost:", error);
-        return res.status(500).json({ message: "Internal server error", success: false });
-    }
-};
-
-const updateEnergyBoost = async (req, res) => {
-    try {
-        const { energyId } = req.params;
+        const boostId = req.params[idParam];
         const updateData = req.body;
 
-        const energyBoost = await EnergyBoost.findByIdAndUpdate(
-            energyId,
-            { $set: updateData },
-            { new: true }
-        );
+        const boost = await BoostModel.findByIdAndUpdate(boostId, { $set: updateData }, { new: true });
 
-        if (!energyBoost) {
-            return res.status(404).json({ message: "Energy boost not found", success: false });
+        if (!boost) {
+            return res.status(404).json({ message: `${type} boost not found`, success: false });
         }
 
-        return res.status(200).json({ message: "Energy boost updated successfully", energyBoost, success: true });
+        return res.status(200).json({ message: `${type} boost updated successfully`, boost, success: true });
     } catch (error) {
-        console.error("Error while updating energy boost:", error);
+        console.error(`Error while updating ${type} boost:`, error);
         return res.status(500).json({ message: "Internal server error", success: false });
     }
 };
 
+// Update Multitap Boost
+const updateMultitapBoost = (req, res) => updateBoost(req, res, MultitapBoost, 'Multitap', 'multitapId');
 
-const updateMultitapBoost = async (req, res) => {
+// Update Energy Boost
+const updateEnergyBoost = (req, res) => updateBoost(req, res, EnergyBoost, 'Energy', 'energyId');
+
+// Get all boosters (common for both multitap and energy boost)
+const getAllBoosts = async (req, res, BoostModel, type) => {
+    const { page = 1, limit = 10 } = req.query; // Default to page 1 and limit 10
+
     try {
-        const { multitapId } = req.params;
-        const updateData = req.body;
+        const skips = (page - 1) * limit; // Calculate how many documents to skip
 
-        const multitapBoost = await MultitapBoost.findByIdAndUpdate(
-            multitapId,
-            { $set: updateData },
-            { new: true }
-        );
+        const boosts = await BoostModel.find()
+            .skip(skips)
+            .limit(limit);
 
-        if (!multitapBoost) {
-            return res.status(404).json({ message: "Multitap boost not found", success: false });
+        const totalBoosts = await BoostModel.countDocuments(); // Get the total count of documents
+
+        if (boosts.length === 0) {
+            return res.status(400).json({ message: `No ${type} boosters found`, success: false });
         }
 
-        return res.status(200).json({ message: "Multitap boost updated successfully", multitapBoost, success: true });
+        const totalPages = Math.ceil(totalBoosts / limit); // Calculate total pages
+
+        return res.status(200).json({
+            boosts,
+            message: `${type} boosters retrieved successfully`,
+            success: true,
+            pagination: {
+                currentPage: Number(page),
+                totalPages,
+                totalBoosts,
+            }
+        });
     } catch (error) {
-        console.error("Error while updating multitap boost:", error);
+        console.error(`Error while getting ${type} boosts:`, error);
         return res.status(500).json({ message: "Internal server error", success: false });
     }
 };
 
+// Get all Multitap Boosters
+const getAllMultiTapBooster = (req, res) => getAllBoosts(req, res, MultitapBoost, 'Multitap');
 
-const getAllMultiTapBooster = async (req, res) => {
+// Get all Energy Boosters
+const getAllEnergyBooster = (req, res) => getAllBoosts(req, res, EnergyBoost, 'Energy');
+
+// Get single booster based on member's level
+const getSingleBooster = async (req, res, BoostModel, memberLevel, type) => {
     try {
-        const multiTaps = await MultitapBoost.find()
-        if (multiTaps.length === 0) {
-            return res.status(400).json({ message: "No multi tap booster found", success: true })
-        }
-
-        return res.status(200).json({ multiTaps, message: "Multitap boosters reterived successfully", success: true })
-    } catch (error) {
-        console.error("Error while getting multitap boost:", error);
-        return res.status(500).json({ message: "Internal server error", success: false });
-    }
-}
-
-const getAllEnergyBooster = async (req, res) => {
-    try {
-        const energyBoosts = await EnergyBoost.find()
-        if (energyBoosts.length === 0) {
-            return res.status(400).json({ message: "No energybooster found", success: true })
-        }
-
-        return res.status(200).json({ energyBoosts, message: "Energy boosters reterived successfully", success: true })
-    } catch (error) {
-        console.error("Error while getting energy boost:", error);
-        return res.status(500).json({ message: "Internal server error", success: false });
-    }
-}
-
-const getSingleEnergyBooster = async (req, res) => {
-    const energyId = req?.member.energyLevel;
-
-    try {
-        const energyLevels = await EnergyBoost.find();
-
-        const currentLevelIndex = energyLevels.findIndex(level => level._id.toString() === energyId.toString());
-        const firstIndex = energyLevels[0]
+        const levels = await BoostModel.find();
+        const currentLevelIndex = levels.findIndex(level => level._id.toString() === memberLevel.toString());
+        const firstLevel = levels[0];
 
         if (currentLevelIndex !== -1) {
-            const nextLevel = energyLevels[currentLevelIndex + 1];
-            return res.status(200).json({ success: true, message: "Energy Booster fetched", level: nextLevel });
-        } else {
-            // If the energyId does not exist, return the first energy level
-            return res.status(200).json({ success: true, message: "Energy Booster fetched", level: firstIndex });
+            const nextLevel = levels[currentLevelIndex + 1] || levels[0];
+            return res.status(200).json({ success: true, message: `${type} booster fetched`, level: nextLevel });
         }
     } catch (error) {
-        console.error(error);
+        console.error(`Error fetching ${type} booster:`, error);
         return res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 
-const getSingleTapBooster = async (req, res) => {
-    const energyId = req?.member.energyLevel;
+// Get Single Energy Booster
+const getSingleEnergyBooster = (req, res) => getSingleBooster(req, res, EnergyBoost, req?.member.energyLevel, 'Energy');
 
-    try {
-        const energyLevels = await MultitapBoost.find();
+// Get Single Tap Booster
+const getSingleTapBooster = (req, res) => getSingleBooster(req, res, MultitapBoost, req?.member.tapLevel, 'Tap');
 
-        const currentLevelIndex = energyLevels.findIndex(level => level._id.toString() === energyId.toString());
-        const firstIndex = energyLevels[0]
-
-        if (currentLevelIndex !== -1) {
-            const nextLevel = energyLevels[currentLevelIndex + 1] || energyLevels[0]; // Return next or first if it's the last level
-            return res.status(200).json({ success: true, message: "Tap booster fetched", level: nextLevel });
-        } else {
-            // If the energyId does not exist, return the first energy level
-            return res.status(200).json({ success: true, message: "Tap Booster fetched", level: firstIndex });
-        }
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ success: false, message: 'Server error' });
-    }
-};
-
-
-const boostBooster = async (req, res, type) => {
+// Boost a booster (for both energy and multitap)
+const boostBooster = async (req, res, type, BoostModel) => {
     const { boosterId } = req.params;
     const member = req.member;
 
@@ -213,53 +152,57 @@ const boostBooster = async (req, res, type) => {
     }
 
     try {
-        const BoosterModel = type === 'energy' ? EnergyBoost : MultitapBoost;
+        // Perform a single query to get both the current booster and the next booster
+        const boosters = await BoostModel.find({
+            $or: [
+                { _id: boosterId },
+                { level: { $gte: 1 } }
+            ]
+        });
 
-        // Find the booster by ID
-        const booster = await BoosterModel.findById(boosterId);
+        // Extract the current and next booster from the results
+        const currentBooster = boosters.find(booster => booster._id.toString() === boosterId);
+        const nextBooster = boosters.find(booster => booster.level === currentBooster.level + 1);
 
-        if (!booster) {
-            return res.status(404).json({ message: `${type.charAt(0).toUpperCase() + type.slice(1)} booster not found.`, success: false });
+        if (!currentBooster) {
+            return res.status(404).json({ message: `${type} booster not found.`, success: false });
         }
 
-        if (booster.cost > member.wallet.coins) {
+        if (currentBooster.cost > member.wallet.coins) {
             return res.status(400).json({ message: "Insufficient Coins", success: false });
         }
 
         // Deduct coins and update member's power-ups
-        member.wallet.coins -= booster.cost;
+        member.wallet.coins -= currentBooster.cost;
 
         if (type === 'energy') {
-            member.energyLevel = booster._id;
-            member.powerUps.energy += booster.energy;
-        } else if (type === 'tap') {
-            member.tapLevel = booster._id;
-            member.powerUps.OnTap += booster.tap;
+            member.energyLevel = nextBooster ? nextBooster._id : currentBooster._id;
+            member.powerUps.energy += currentBooster.energy;
+        } else {
+            member.tapLevel = nextBooster ? nextBooster._id : currentBooster._id;
+            member.powerUps.onTap += currentBooster.tap;
         }
 
+        // Save the updated member data
         await member.save();
 
         return res.status(200).json({
-            message: `${type.charAt(0).toUpperCase() + type.slice(1)} level updated successfully.`,
+            message: `${type} level updated successfully.`,
+            nextBoosterAvailable: !!nextBooster,
             success: true
         });
     } catch (error) {
         console.error(`Error updating ${type} booster:`, error);
-        return res.status(500).json({ message: `An error occurred while updating ${type} booster.`, error, success: false });
+        return res.status(500).json({ message: `An error occurred while updating ${type} booster.`, success: false });
     }
 };
 
-// Boost energy booster
-const boostEnergyBooster = async (req, res) => {
-    return boostBooster(req, res, 'energy');
-};
 
-// Boost tap booster
-const boostTapBooster = async (req, res) => {
-    return boostBooster(req, res, 'tap');
-};
+// Boost Energy Booster
+const boostEnergyBooster = (req, res) => boostBooster(req, res, 'energy', EnergyBoost);
 
-
+// Boost Tap Booster
+const boostTapBooster = (req, res) => boostBooster(req, res, 'tap', MultitapBoost);
 
 module.exports = {
     createMultiTapBoost,

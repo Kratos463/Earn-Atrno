@@ -15,10 +15,14 @@ export const getConfig = (): { headers: { 'Content-Type': string; 'x-api-key': s
 
 
 export const formatNumber = (num: number): string => {
-  if (num >= 1_000_000) {
-    return `${(num / 1_000_000).toFixed(1)}M`;
+  if (num >= 1_000_000_000_000) {
+    return `${(num / 1_000_000_000_000).toFixed(1)}T`; // Trillions
+  } else if (num >= 1_000_000_000) {
+    return `${(num / 1_000_000_000).toFixed(1)}B`; // Billions
+  } else if (num >= 1_000_000) {
+    return `${(num / 1_000_000).toFixed(1)}M`; // Millions
   } else if (num >= 1_000) {
-    return `${(num / 1_000).toFixed(0)}k`;
+    return `${(num / 1_000).toFixed(1)}k`; // Thousands
   } else {
     return num.toString(); 
   }

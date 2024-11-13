@@ -3,13 +3,15 @@ import AuthReducer from './Auth'
 import UserReducer from './User'
 import LevelReducer from './Levels'
 import TaskReducer from './Tasks'
+import BoosterReducer from "./Booster";
 
 const store = configureStore({
   reducer: {
     auth: AuthReducer,
     user: UserReducer,
     level: LevelReducer,
-    task: TaskReducer
+    task: TaskReducer,
+    booster: BoosterReducer
   },
 });
 export default store;

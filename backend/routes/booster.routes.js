@@ -1,4 +1,4 @@
-const { Router } = require("express")
+const { Router } = require("express");
 const {
     createMultiTapBoost,
     createEnergyBoost,
@@ -12,27 +12,33 @@ const {
     getSingleTapBooster,
     boostEnergyBooster,
     boostTapBooster,
-} = require("../controllers/boost.controller")
-const VerifyMember = require("../middlewares/verifyMember.middleware")
+} = require("../controllers/boost.controller");
+const VerifyMember = require("../middlewares/verifyMember.middleware");
 
-const router = Router() 
+const router = Router();
 
+// Create Boosters 
+router.route("/multitap").post(createMultiTapBoost);
+router.route("/energy").post(createEnergyBoost);
 
-router.route("/create-multitap-booster").post(createMultiTapBoost)
-router.route("/create-energy-booster").post(createEnergyBoost)
-router.route("/get-multitap-booster").get(getAllMultiTapBooster)
-router.route("/single-energy-booster").get(VerifyMember, getSingleEnergyBooster)
-router.route("/single-tap-booster").get(VerifyMember,  getSingleTapBooster)
-router.route("/get-energy-booster").get(getAllEnergyBooster)
-router.route("/delete-multitap-booster/:multiTapId").delete(deleteMultiTapBoost)
-router.route("/delete-energy-booster/:energyId").delete(deleteEnergyBoost)
-router.route("/update-energy-booster/:energyId").patch(updateEnergyBoost)
-router.route("/update-multitap-booster/:multitapId").patch(updateMultitapBoost)
+// Get All Boosters
+router.route("/multitaps").get(getAllMultiTapBooster);
+router.route("/energys").get(getAllEnergyBooster);
 
+// Get Single Booster (with member verification)
+router.route("/energy").get(VerifyMember, getSingleEnergyBooster);
+router.route("/multitap").get(VerifyMember, getSingleTapBooster);
 
-// boost by user
-router.route("/boost-energy/:boosterId").post(VerifyMember, boostEnergyBooster)
-router.route("/boost-tap/:boosterId").post(VerifyMember, boostTapBooster)
+// Delete Boosters
+router.route("/multitap/:boosterId").delete(deleteMultiTapBoost);
+router.route("/energy/:boosterId").delete(deleteEnergyBoost);
 
+// Update Boosters
+router.route("/multitap/:boosterId").patch(updateMultitapBoost);
+router.route("/energy/:boosterId").patch(updateEnergyBoost);
 
-module.exports = router
+// Boost by User (with member verification)
+router.route("/energy/:boosterId/boost").post(VerifyMember, boostEnergyBooster);
+router.route("/multitap/:boosterId/boost").post(VerifyMember, boostTapBooster);
+
+module.exports = router;

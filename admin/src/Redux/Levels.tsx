@@ -19,7 +19,7 @@ export const fetchLevels = createAsyncThunk<GetLevelsResponse, { page: number, l
     async ({ page, limit },  { rejectWithValue }) => {
         try {
             const response = await axios.get<GetLevelsResponse>(
-                `${process.env.API_URL}/api/v1/admin/get-level?page=${page}&limit=${limit}`,
+                `${process.env.API_URL}/api/v1/level?page=${page}&limit=${limit}`,
                 getConfig()
             );
             return response.data;
@@ -38,7 +38,7 @@ export const createLevel = createAsyncThunk<CreateLevelResponse, CreateLevelRequ
     async (levelData, { rejectWithValue }) => {
         try {
             const response = await axios.post<CreateLevelResponse>(
-                `${process.env.API_URL}/api/v1/level/create-level`,
+                `${process.env.API_URL}/api/v1/level`,
                 levelData,
                 {
                     headers: {
@@ -59,24 +59,6 @@ export const createLevel = createAsyncThunk<CreateLevelResponse, CreateLevelRequ
     }
 );
 
-// export const deletePromotion = createAsyncThunk<DeletePromotionResponse, string>(
-//     "promotion/getPromotionById",
-//     async (id, { rejectWithValue }) => {
-//         try {
-//             const response = await axios.delete<DeletePromotionResponse>(
-//                 `${process.env.API_URL}/api/v1/admin/promotion/${id}`,
-//                 getConfig()
-//             );
-//             return response.data;
-//         } catch (error) {
-//             console.error("Error while deleting promotion by ID:", error);
-//             if (axios.isAxiosError(error) && error.response && error.response.data) {
-//                 return rejectWithValue(error.response.data.message || "Failed to delete promotion. Please try again.");
-//             }
-//             return rejectWithValue("Failed to fetch promotion. Please try again.");
-//         }
-//     }
-// );
 
 // Slice
 const levelSlice = createSlice({
@@ -109,17 +91,6 @@ const levelSlice = createSlice({
                 state.addLoading = false;
                 state.error = action.payload as string;
             })
-            // .addCase(deletePromotion.pending, (state) => {
-            //     state.isLoading = true;
-            //     state.error = null;
-            // })
-            // .addCase(deletePromotion.fulfilled, (state, action: PayloadAction<DeletePromotionResponse>) => {
-            //     state.isLoading = false;
-            // })
-            // .addCase(deletePromotion.rejected, (state, action) => {
-            //     state.isLoading = false;
-            //     state.error = action.payload as string;
-            // });
     },
 });
 

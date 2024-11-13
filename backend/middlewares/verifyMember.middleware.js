@@ -1,25 +1,14 @@
-const jwt = require("jsonwebtoken");
 const Member = require("../models/member.model");
 
-const extractTokenFromHeader = (authorizationHeader) => {
-    if (!authorizationHeader || !authorizationHeader.startsWith("Bearer")) {
-        return null;
-    }
-    return authorizationHeader.split(" ")[1];
-};
-
 const VerifyMember = async (req, res, next) => {
-    const authorizationHeader = req.headers.authorization;
+    const { telegramId } = req.query;
 
-    const token = extractTokenFromHeader(req.headers.authorization);
-
-    if (!token) {
-        return res.status(401).json({ error: "Authorization failed: No token provided.", success: false });
+    if (!telegramId) {
+        return res.status(401).json({ error: "Authorization failed: No telegramId provided.", success: false });
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.TOKEN_SECRET);
-        const member = await Member.findById(decoded.id)
+        const member = await Member.findOne({ telegramId });
 
         if (!member) {
             return res.status(403).json({ error: "Access denied: User not found.", success: false });
@@ -28,10 +17,8 @@ const VerifyMember = async (req, res, next) => {
         req.member = member;
         next();
     } catch (error) {
-        if (error.name === "TokenExpiredError") {
-            return res.status(401).json({ error: "Token expired, please log in again.", success: false });
-        }
-        return res.status(401).json({ error: "Authorization failed: Invalid token.", success: false });
+        console.error("Error verifying member:", error);
+        return res.status(500).json({ error: "Internal server error.", success: false });
     }
 };
 

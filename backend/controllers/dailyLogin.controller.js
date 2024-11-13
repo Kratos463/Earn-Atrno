@@ -1,155 +1,117 @@
 const DailyLoginReward = require("../models/dailyLogin.model");
 
+// Helper functions
+const handleError = (res, message, ) => {
+    return res.status(400).json({ message, success: false });
+};
 
-// create a new daily login reward
+const handleServerError = (res, error) => {
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error.", success: false });
+};
+
+const validateDailyRewardInput = (day, rewardValue, res) => {
+    if (!day && !rewardValue) {
+        return handleError(res, "Please provide all required parameters.");
+    }
+
+    if (day <= 0 || day > 10) {
+        return handleError(res, "Maximum day to create daily login reward is 10.");
+    }
+
+    if (rewardValue < 0) {
+        return handleError(res, "Reward value must be a non-negative number.");
+    }
+
+    return null;
+};
+
+// Create a new daily login reward
 const createDailyLoginReward = async (req, res) => {
     try {
-        const { day, rewardValue, isActive } = req.body;
+        const { day, rewardValue } = req.body;
 
         // Validate input
-        if (!day && !rewardValue && !isActive) {
-            return res.status(400).json({ message: "Please provide all required parameters.", success: false });
-        }
-
-        if (day <= 0 || day > 10) {
-            return res.status(400).json({ message: "Maximum day to create daily login reward is 10.", success: false });
-        }
-
-        if (rewardValue < 0) {
-            return res.status(400).json({ message: "Reward value must be a non-negative number.", success: false });
-        }
+        const validationError = validateDailyRewardInput(day, rewardValue, res);
+        if (validationError) return validationError;
 
         // Check if the daily reward already exists
         const existingDay = await DailyLoginReward.findOne({ day });
-
-        if (existingDay) {
-            return res.status(400).json({ message: "Reward for this day already exists. Please provide a different day.", success: false });
-        }
+        if (existingDay) return handleError(res, "Reward for this day already exists. Please provide a different day.");
 
         // Create new daily login reward
-        const newDailyReward = new DailyLoginReward({
-            day,
-            rewardValue,
-            isActive
-        });
-
+        const newDailyReward = new DailyLoginReward({ day, rewardValue });
         await newDailyReward.save();
 
-        return res.status(201).json({ message: "Daily login reward created successfully.", success: true });
-
+        return res.status(201).json({ message: "Daily login reward created successfully.", success: true, reward: newDailyReward });
     } catch (error) {
-        console.error("Error creating daily login reward:", error);
-        return res.status(500).json({ message: "Internal server error.", success: false });
+        return handleServerError(res, error);
     }
 };
 
-
-// fetch single daily login reward
+// Fetch single daily login reward
 const getSingleDailyReward = async (req, res) => {
     try {
         const { id } = req.query;
 
-        // Validate input
-        if (!id) {
-            return res.status(400).json({ message: "Please provide an id.", success: false });
-        }
+        if (!id) return handleError(res, "Please provide an id.");
 
-        // Find the daily login reward by id
         const dailyReward = await DailyLoginReward.findById(id);
-
-        if (!dailyReward) {
-            return res.status(404).json({ message: "Daily login reward not found.", success: false });
-        }
+        if (!dailyReward) return handleError(res, "Daily login reward not found.");
 
         return res.status(200).json({ message: "Daily login reward retrieved successfully.", success: true, dailyReward });
-
     } catch (error) {
-        console.error("Error retrieving daily login reward:", error);
-        return res.status(500).json({ message: "Internal server error.", success: false });
+        return handleServerError(res, error);
     }
 };
 
-
-// fetch all the daily login Reward
+// Fetch all daily login rewards
 const getAllDailyRewards = async (req, res) => {
     try {
-        // Find all daily login rewards
         const dailyRewards = await DailyLoginReward.find().select("-createdAt -updatedAt");
-
-        return res.status(200).json({
-            message: "Daily login rewards retrieved successfully.",
-            success: true,
-            dailyRewards
-        });
-
+        return res.status(200).json({ message: "Daily login rewards retrieved successfully.", success: true, dailyRewards });
     } catch (error) {
-        console.error("Error retrieving daily login rewards:", error);
-        return res.status(500).json({ message: "Internal server error.", success: false });
+        return handleServerError(res, error);
     }
 };
 
-
-// update single daily login reward
+// Update single daily login reward
 const updateDailyLoginReward = async (req, res) => {
     try {
         const { id } = req.params;
         const { day, rewardValue, isActive } = req.body;
 
-        if (!id) {
-            return res.status(400).json({ message: "Please provide an id.", success: false });
-        }
+        if (!id) return handleError(res, "Please provide an id.");
 
-        // Find the daily login reward by id and update it
         const updatedReward = await DailyLoginReward.findByIdAndUpdate(
             id,
             { day, rewardValue, isActive },
             { new: true, runValidators: true }
         );
 
-        if (!updatedReward) {
-            return res.status(404).json({ message: "Daily login reward not found.", success: false });
-        }
+        if (!updatedReward) return handleError(res, "Daily login reward not found.");
 
-        return res.status(200).json({
-            message: "Daily login reward updated successfully.",
-            success: true,
-            updatedReward
-        });
-
+        return res.status(200).json({ message: "Daily login reward updated successfully.", success: true, updatedReward });
     } catch (error) {
-        console.error("Error updating daily login reward:", error);
-        return res.status(500).json({ message: "Internal server error.", success: false });
+        return handleServerError(res, error);
     }
 };
 
-
-// delete single daily login reward
+// Delete single daily login reward
 const deleteDailyLoginReward = async (req, res) => {
     try {
         const { id } = req.params;
 
-        if (!id) {
-            return res.status(400).json({ message: "Please provide an id.", success: false });
-        }
+        if (!id) return handleError(res, "Please provide an id.");
 
-        // Find and delete the daily login reward by id
         const deletedReward = await DailyLoginReward.findByIdAndDelete(id);
+        if (!deletedReward) return handleError(res, "Daily login reward not found.");
 
-        if (!deletedReward) {
-            return res.status(404).json({ message: "Daily login reward not found.", success: false });
-        }
-
-        return res.status(200).json({
-            message: "Daily login reward deleted successfully.",
-            success: true,
-        });
-
+        return res.status(200).json({ message: "Daily login reward deleted successfully.", success: true });
     } catch (error) {
-        console.error("Error deleting daily login reward:", error);
-        return res.status(500).json({ message: "Internal server error.", success: false });
+        return handleServerError(res, error);
     }
 };
-
 
 module.exports = {
     createDailyLoginReward,

@@ -13,9 +13,10 @@ const dailyLoginRewardsRouter = require('./routes/dailyLoginRewards.routes');
 const levelRouter = require('./routes/level.routes');
 const boosterRouter = require('./routes/booster.routes');
 const adminRouter = require('./routes/admin.routes');
-const twitterRoutes = require('./routes/twitter.routes');
+const telegramRoutes = require('./routes/telegram.routes');
 const taskRoutes = require('./routes/tasks.routes');
 const apiKeyMiddleware = require('./middlewares/apiKey.middleware');
+const { setTelegramWebhook } = require('./controllers/telegram.controller');
 
 const app = express();
 
@@ -23,6 +24,8 @@ const app = express();
 const whitelist = [
   'http://localhost:3000',
   'http://localhost:3001',
+  'https://atrnoarenaapi.aeternus.foundation',
+  'https://atrnoarena.aeternus.foundation',
 ];
 
 const corsOptions = {
@@ -37,14 +40,12 @@ const corsOptions = {
 };
 
 
-
-// Use sessions to store OAuth tokens, secure should be true in production with HTTPS
 app.use(session({
   secret: process.env.SESSION_SECRET || 'default-secret-key', 
   resave: false,
   saveUninitialized: true,
-  cookie: { secure: process.env.NODE_ENV === 'production' } // Set secure to true in production
-}));``
+  cookie: { secure: process.env.NODE_ENV === 'production' }
+}));
 
 // Middleware for parsing cookies
 app.use(cookieParser());
@@ -54,6 +55,8 @@ app.use(bodyParser.json());
 
 // Middleware for parsing URL-encoded data
 app.use(express.urlencoded({ extended: true, limit: '25kb' }));
+
+app.use(express.json());
 
 // Configure CORS middleware with the specified options
 app.use(cors(corsOptions));
@@ -72,12 +75,12 @@ app.use('/api/v1', apiKeyMiddleware);
 // Define all routes
 app.use('/', indexRouter);
 app.use('/api/v1/member', memberRouter);
-app.use('/api/v1/daily-login', dailyLoginRewardsRouter);
+app.use('/api/v1/daily-login-reward', dailyLoginRewardsRouter);
 app.use('/api/v1/level', levelRouter);
 app.use('/api/v1/booster', boosterRouter);
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/task', taskRoutes);
-app.use('/auth/twitter', twitterRoutes);
+app.use('/api/v1/telegram', telegramRoutes);
 
 // Catch 404 and forward to error handler
 app.use((req, res, next) => {

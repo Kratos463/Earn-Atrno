@@ -1,12 +1,27 @@
-const {Router} = require("express")
-const { createDailyLoginReward, getSingleDailyReward, getAllDailyRewards, updateDailyLoginReward, deleteDailyLoginReward } = require("../controllers/dailyLogin.controller")
+const { Router } = require("express");
+const { 
+    createDailyLoginReward,
+    getSingleDailyReward,
+    getAllDailyRewards,
+    updateDailyLoginReward,
+    deleteDailyLoginReward
+} = require("../controllers/dailyLogin.controller");
 
-const router = Router()
+const router = Router();
 
-router.route("/create-daily-login-reward").post(createDailyLoginReward)
-router.route("/get-single-daily-login-reward").get(getSingleDailyReward)
-router.route("/get-all-daily-login-reward").get(getAllDailyRewards)
-router.route("/update-daily-login-reward/:id").patch(updateDailyLoginReward)
-router.route("/delete-daily-login-reward/:id").delete(deleteDailyLoginReward)
+// Route for creating a new daily login reward
+router.route("/").post(createDailyLoginReward);
 
-module.exports= router
+// Route for getting a single daily login reward by ID
+router.route("/:id").get(getSingleDailyReward); 
+
+// Route for fetching all daily login rewards
+router.route("/").get(getAllDailyRewards);
+
+// Route for updating a daily login reward by ID
+router.route("/:id").patch(updateDailyLoginReward);
+
+// Route for deleting a daily login reward by ID
+router.route("/:id").delete(deleteDailyLoginReward);
+
+module.exports = router;

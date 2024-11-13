@@ -1,13 +1,20 @@
 const { Schema, model } = require("mongoose");
-const redisClient = require("../utils/redisConnect");
 
 const memberSchema = new Schema({
-    userId: {
+    telegramId: {
         type: String,
         required: true,
         trim: true,
-        index: true,
         unique: true
+    },
+    firstName: {
+        type: String,
+        trim: true,
+        index: true,
+    },
+    lastName: {
+        type: String,
+        trim: true
     },
     referralCode: {
         type: String,
@@ -58,7 +65,7 @@ const memberSchema = new Schema({
     },
     nextDayRewardDate: {
         type: Date,
-        required: true
+        default: () => new Date(Date.now() + 24 * 60 * 60 * 1000)
     },
     wallet: {
         coins: {
@@ -109,25 +116,28 @@ const memberSchema = new Schema({
         enum: ['Active', 'Suspended', 'Banned'],
         default: 'Active',
     },
+    nextUpcomingLevel: {
+        levelId: {
+            type: Schema.Types.ObjectId,
+            ref: 'Level',
+        },
+        levelNumber: {
+            type: Number,
+            required: true,
+        },
+    },
+    officialTask: [{
+        taskId: {
+            type: Schema.Types.ObjectId,
+            ref: 'OfficialTask',
+        },
+        completed: {
+            type: Boolean,
+            default: false,
+        },
+    }],
 }, { timestamps: true });
 
+const Member = model("Member", memberSchema);
 
-// // Middleware to update cache after save
-// memberSchema.post('save', async function (doc) {
-//     const memberId = doc._id.toString();
-//     await redisClient.setEx(`member:${memberId}`, 3600, JSON.stringify(doc));
-//     console.log(`Cache updated for member: ${memberId}`);
-// });
-
-// // Middleware to update cache after findOneAndUpdate
-// memberSchema.post('findOneAndUpdate', async function (doc) {
-//     if (doc) {
-//         const memberId = doc._id.toString();
-//         await redisClient.setEx(`member:${memberId}`, 3600, JSON.stringify(doc));
-//         console.log(`Cache updated for member: ${memberId}`);
-//     }
-// });
-
-const Member = model("Member", memberSchema)
-
-module.exports = Member
+module.exports = Member;

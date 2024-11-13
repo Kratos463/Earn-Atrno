@@ -32,7 +32,7 @@ export const fetchUsers = createAsyncThunk<FetchUsersResponse, { page: number, l
     async ({ page, limit }, { rejectWithValue }) => {
         try {
             const response = await axios.get<FetchUsersResponse>(
-                `${process.env.API_URL}/api/v1/admin/members?page=${page}&limit=${limit}`,
+                `${process.env.API_URL}/api/v1/member?page=${page}&limit=${limit}`,
                 getConfig()
             );
             return response.data;

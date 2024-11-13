@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import DefaultLayout from "../Layouts/DefaultLayout";
 import Breadcrumb from "../Breadcrumbs/Breadcrumb";
 import Flag from 'react-world-flags';
+import { formatNumber } from "@/utils";
 
 const UserTable = () => {
   const dispatch = useAppDispatch();
@@ -108,7 +109,7 @@ const UserTable = () => {
                    </div>
                   </td>
                   <td className="border-b border-[#eee] px-4 py-5 dark:border-strokedark xl:pl-11">
-                    <p className="text-black dark:text-white text-xs">{user?.wallet?.coins?.toLocaleString()}</p>
+                    <p className="text-black dark:text-white text-xs">{formatNumber(user.wallet.coins)}</p>
                   </td>
                   <td className="border-b border-[#eee] px-4 py-5 dark:border-strokedark">
                     <p className="text-black dark:text-white text-xs">

@@ -12,7 +12,7 @@ const LevelTable = () => {
     const [searchTerm, setSearchTerm] = useState('');
 
     const [page, setPage] = useState(1);
-    const limit = 20;
+    const limit = 10;
 
     useEffect(() => {
         dispatch(fetchLevels({ page, limit }));
